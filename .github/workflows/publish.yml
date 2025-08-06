@@ -1,0 +1,54 @@
+name: Publish NuGet Package to GitHub Packages
+
+on:
+  push:
+    branches:
+      - nuget
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Authenticate to GitHub Packages
+      shell: pwsh
+      run: |
+        dotnet nuget remove source github || echo "No existing 'github' source found."
+        dotnet nuget add source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" `
+          --name github `
+          --username "${{ github.actor }}" `
+          --password "${{ secrets.GIT_TOKEN }}" `
+          --store-password-in-clear-text
+
+    - name: Restore dependencies
+      run: dotnet restore ./src/DPUnity.Wpf.DpDataGrid.csproj
+
+    - name: Build
+      run: dotnet build ./src/DPUnity.Wpf.DpDataGrid.csproj --configuration Release
+
+    - name: Pack NuGet package
+      run: dotnet pack ./src/DPUnity.Wpf.DpDataGrid.csproj --configuration Release --output ./nupkg
+
+    - name: Find .nupkg file
+      id: find_nupkg
+      shell: pwsh
+      run: |
+        $file = Get-ChildItem -Path ./nupkg -Filter *.nupkg | Select-Object -ExpandProperty FullName
+        echo "NUPKG_PATH=$file" >> $env:GITHUB_ENV
+
+    - name: Push to GitHub Packages
+      shell: pwsh
+      run: |
+        echo "Using package: $env:NUPKG_PATH"
+        dotnet nuget push "$env:NUPKG_PATH" `
+          --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" `
+          --api-key "${{ secrets.GIT_TOKEN }}" `
+          --skip-duplicate
