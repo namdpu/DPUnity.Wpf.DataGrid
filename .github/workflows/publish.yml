@@ -48,29 +48,23 @@ jobs:
 
     - name: Notify Discord - Build Success
       if: success()
-      uses: Ilshidur/action-discord@master
-      env:
-        DISCORD_WEBHOOK: ${{ env.DISCORD_WEBHOOK }}
-      with:
-        args: |
-          ✅ **Build Success** - DPU WPF DataGrid NuGet Package
-          📦 Project built and packed successfully
-          🔗 Repository: ${{ github.repository }}
-          👤 Author: ${{ github.actor }}
+      shell: pwsh
+      run: |
+        $payload = @{
+          content = "✅ **Build Success** - DPU WPF DataGrid NuGet Package`n📦 Project built and packed successfully`n🔗 Repository: ${{ github.repository }}`n👤 Author: ${{ github.actor }}"
+        } | ConvertTo-Json
+        
+        Invoke-RestMethod -Uri "${{ env.DISCORD_WEBHOOK }}" -Method Post -Body $payload -ContentType "application/json"
 
     - name: Notify Discord - Build Failed
       if: failure()
-      uses: Ilshidur/action-discord@master
-      env:
-        DISCORD_WEBHOOK: ${{ env.DISCORD_WEBHOOK }}
-      with:
-        args: |
-          ❌ **Build Failed** - DPU WPF DataGrid NuGet Package
-          💥 Failed to build or pack the project
-          🔗 Repository: ${{ github.repository }}
-          👤 Author: ${{ github.actor }}
-          📝 Commit: `${{ github.sha }}`
-          🔍 Check logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      shell: pwsh
+      run: |
+        $payload = @{
+          content = "❌ **Build Failed** - DPU WPF DataGrid NuGet Package`n💥 Failed to build or pack the project`n🔗 Repository: ${{ github.repository }}`n👤 Author: ${{ github.actor }}`n📝 Commit: ``${{ github.sha }}```n🔍 Check logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        } | ConvertTo-Json
+        
+        Invoke-RestMethod -Uri "${{ env.DISCORD_WEBHOOK }}" -Method Post -Body $payload -ContentType "application/json"
 
   deploy:
     needs: build
@@ -136,28 +130,20 @@ jobs:
 
     - name: Notify Discord - Deploy Success
       if: success()
-      uses: Ilshidur/action-discord@master
-      env:
-        DISCORD_WEBHOOK: ${{ env.DISCORD_WEBHOOK }}
-      with:
-        args: |
-          📦 **Deploy Success** - DPU WPF DataGrid NuGet Package
-          ✅ Package published to GitHub Packages successfully
-          🏷️ Package: ${{ env.PACKAGE_NAME }}
-          🔗 Version: ${{ env.PACKAGE_VERSION }}
-          🔗 Repository: ${{ github.repository }}
-          👤 Author: ${{ github.actor }}
+      shell: pwsh
+      run: |
+        $payload = @{
+          content = ":white_check_mark: **Build & Deploy Success** - DPU Wpf DpDataGrid`n:package: NuGet Package built and published successfully`n:clipboard: Package: $env:PACKAGE_NAME`n:link: Version: $env:PACKAGE_VERSION`n:link: Repository: ${{ github.repository }}`n:bust_in_silhouette: Author: ${{ github.actor }}"
+        } | ConvertTo-Json
+        
+        Invoke-RestMethod -Uri "${{ env.DISCORD_WEBHOOK }}" -Method Post -Body $payload -ContentType "application/json"
 
     - name: Notify Discord - Deploy Failed
       if: failure()
-      uses: Ilshidur/action-discord@master
-      env:
-        DISCORD_WEBHOOK: ${{ env.DISCORD_WEBHOOK }}
-      with:
-        args: |
-          ❌ **Deploy Failed** - DPU WPF DataGrid NuGet Package
-          💥 Failed to publish package to GitHub Packages
-          🔗 Repository: ${{ github.repository }}
-          👤 Author: ${{ github.actor }}
-          📝 Commit: `${{ github.sha }}`
-          🔍 Check logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      shell: pwsh
+      run: |
+        $payload = @{
+          content = ":x: **Build & Deploy Failed** - DPU Wpf DpDataGrid`n:boom: Nuget package build and publish failed`n:link: Repository: ${{ github.repository }}`n:bust_in_silhouette: Author: ${{ github.actor }}`n:pencil: Commit: ``${{ github.sha }}```n:mag: Check logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        } | ConvertTo-Json
+        
+        Invoke-RestMethod -Uri "${{ env.DISCORD_WEBHOOK }}" -Method Post -Body $payload -ContentType "application/json"
