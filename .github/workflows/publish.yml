@@ -9,7 +9,7 @@ env:
   DISCORD_WEBHOOK: https://discordapp.com/api/webhooks/1402490419530432665/hFcn7hExzZ20MgLpbmGjdF4cwu3YpB5z4k5G01484Jouwl9GNWMxcJi-pYJZjexLFMch
 
 jobs:
-  build:
+  build-and-publish:
     runs-on: windows-latest
 
     steps:
@@ -21,7 +21,7 @@ jobs:
       with:
         dotnet-version: '8.0.x'
 
-    - name: Authenticate to GitHub Packages for restore
+    - name: Authenticate to GitHub Packages
       shell: pwsh
       run: |
         dotnet nuget remove source github || echo "No existing 'github' source found."
@@ -39,62 +39,6 @@ jobs:
 
     - name: Pack NuGet package
       run: dotnet pack ./src/DPUnity.Wpf.DpDataGrid.csproj --configuration Release --output ./nupkg
-
-    - name: Upload NuGet package artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: nuget-package
-        path: ./nupkg/*.nupkg
-
-    - name: Notify Discord - Build Success
-      if: success()
-      shell: pwsh
-      run: |
-        $payload = @{
-          content = "✅ **Build Success** - DPU WPF DataGrid NuGet Package`n📦 Project built and packed successfully`n🔗 Repository: ${{ github.repository }}`n👤 Author: ${{ github.actor }}"
-        } | ConvertTo-Json
-        
-        Invoke-RestMethod -Uri "${{ env.DISCORD_WEBHOOK }}" -Method Post -Body $payload -ContentType "application/json"
-
-    - name: Notify Discord - Build Failed
-      if: failure()
-      shell: pwsh
-      run: |
-        $payload = @{
-          content = "❌ **Build Failed** - DPU WPF DataGrid NuGet Package`n💥 Failed to build or pack the project`n🔗 Repository: ${{ github.repository }}`n👤 Author: ${{ github.actor }}`n📝 Commit: ``${{ github.sha }}```n🔍 Check logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-        } | ConvertTo-Json
-        
-        Invoke-RestMethod -Uri "${{ env.DISCORD_WEBHOOK }}" -Method Post -Body $payload -ContentType "application/json"
-
-  deploy:
-    needs: build
-    runs-on: windows-latest
-    if: success() # Chỉ chạy khi build thành công
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '8.0.x'
-
-    - name: Download NuGet package artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: nuget-package
-        path: ./nupkg
-
-    - name: Authenticate to GitHub Packages
-      shell: pwsh
-      run: |
-        dotnet nuget remove source github || echo "No existing 'github' source found."
-        dotnet nuget add source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" `
-          --name github `
-          --username "${{ github.actor }}" `
-          --password "${{ secrets.GIT_TOKEN }}" `
-          --store-password-in-clear-text
 
     - name: Find .nupkg file
       id: find_nupkg
@@ -128,22 +72,22 @@ jobs:
           echo "Version: $version"
         }
 
-    - name: Notify Discord - Deploy Success
+    - name: Notify Discord - Success
       if: success()
       shell: pwsh
       run: |
         $payload = @{
-          content = ":white_check_mark: **Build & Deploy Success** - DPU Wpf DpDataGrid`n:package: NuGet Package built and published successfully`n:clipboard: Package: $env:PACKAGE_NAME`n:link: Version: $env:PACKAGE_VERSION`n:link: Repository: ${{ github.repository }}`n:bust_in_silhouette: Author: ${{ github.actor }}"
+          content = ":white_check_mark: **Build & Publish Success** - DPU Wpf DpDataGrid`n:package: NuGet Package built and published successfully`n:clipboard: Package: $env:PACKAGE_NAME`n:link: Version: $env:PACKAGE_VERSION`n:link: Repository: ${{ github.repository }}`n:bust_in_silhouette: Author: ${{ github.actor }}"
         } | ConvertTo-Json
         
         Invoke-RestMethod -Uri "${{ env.DISCORD_WEBHOOK }}" -Method Post -Body $payload -ContentType "application/json"
 
-    - name: Notify Discord - Deploy Failed
+    - name: Notify Discord - Failed
       if: failure()
       shell: pwsh
       run: |
         $payload = @{
-          content = ":x: **Build & Deploy Failed** - DPU Wpf DpDataGrid`n:boom: Nuget package build and publish failed`n:link: Repository: ${{ github.repository }}`n:bust_in_silhouette: Author: ${{ github.actor }}`n:pencil: Commit: ``${{ github.sha }}```n:mag: Check logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          content = ":x: **Build & Publish Failed** - DPU Wpf DpDataGrid`n:boom: NuGet package build and publish failed`n:link: Repository: ${{ github.repository }}`n:bust_in_silhouette: Author: ${{ github.actor }}`n:pencil: Commit: ``${{ github.sha }}```n:mag: Check logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         } | ConvertTo-Json
         
         Invoke-RestMethod -Uri "${{ env.DISCORD_WEBHOOK }}" -Method Post -Body $payload -ContentType "application/json"
