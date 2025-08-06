@@ -5,6 +5,13 @@
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
     <ImplicitUsings>enable</ImplicitUsings>
+    <Version>1.0.0</Version>
+    <PackageId>DPUnity.Wpf.DpDataGrid</PackageId>
+    <Title>DPUnity WPF DataGrid</Title>
+    <Description>Enhanced DataGrid controls for WPF applications</Description>
+    <Authors>vanlk</Authors>
+    <Company>DPUnity</Company>
+    <RepositoryUrl>https://github.com/namdpu/DPUnity.Wpf.DataGrid</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>
