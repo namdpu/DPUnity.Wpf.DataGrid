@@ -14,22 +14,12 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Setup .NET
-      uses: actions/setup-dotnet@v3
+      uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '8.0.x'
-
-    - name: Authenticate to GitHub Packages
-      shell: pwsh
-      run: |
-        dotnet nuget remove source github || echo "No existing 'github' source found."
-        dotnet nuget add source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" `
-          --name github `
-          --username "${{ github.actor }}" `
-          --password "${{ secrets.GIT_TOKEN }}" `
-          --store-password-in-clear-text
 
     - name: Restore dependencies
       run: dotnet restore ./src/DPUnity.Wpf.DpDataGrid.csproj
@@ -41,11 +31,67 @@ jobs:
       run: dotnet pack ./src/DPUnity.Wpf.DpDataGrid.csproj --configuration Release --output ./nupkg
 
     - name: Upload NuGet package artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: nuget-package
         path: ./nupkg/*.nupkg
-        
+
+    - name: Notify Discord - Build Success
+      if: success()
+      uses: Ilshidur/action-discord@master
+      env:
+        DISCORD_WEBHOOK: ${{ env.DISCORD_WEBHOOK }}
+      with:
+        args: |
+          ✅ **Build Success** - DPU WPF DataGrid NuGet Package
+          📦 Project built and packed successfully
+          🔗 Repository: ${{ github.repository }}
+          👤 Author: ${{ github.actor }}
+
+    - name: Notify Discord - Build Failed
+      if: failure()
+      uses: Ilshidur/action-discord@master
+      env:
+        DISCORD_WEBHOOK: ${{ env.DISCORD_WEBHOOK }}
+      with:
+        args: |
+          ❌ **Build Failed** - DPU WPF DataGrid NuGet Package
+          💥 Failed to build or pack the project
+          🔗 Repository: ${{ github.repository }}
+          👤 Author: ${{ github.actor }}
+          📝 Commit: `${{ github.sha }}`
+          🔍 Check logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+  deploy:
+    needs: build
+    runs-on: windows-latest
+    if: success() # Chỉ chạy khi build thành công
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Download NuGet package artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: nuget-package
+        path: ./nupkg
+
+    - name: Authenticate to GitHub Packages
+      shell: pwsh
+      run: |
+        dotnet nuget remove source github || echo "No existing 'github' source found."
+        dotnet nuget add source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" `
+          --name github `
+          --username "${{ github.actor }}" `
+          --password "${{ secrets.GIT_TOKEN }}" `
+          --store-password-in-clear-text
+
     - name: Find .nupkg file
       id: find_nupkg
       shell: pwsh
@@ -77,89 +123,29 @@ jobs:
           echo "PACKAGE_VERSION=$version" >> $env:GITHUB_ENV
           echo "Version: $version"
         }
-      
-  discord-notify:
-    needs: build
-    runs-on: ubuntu-latest
-    if: always() # Đảm bảo job này luôn chạy dù build có fail
 
-    steps:
-    - name: Download NuGet package artifacts
-      if: success()
-      uses: actions/download-artifact@v3
-      with:
-        name: nuget-package
-        path: ./nupkg
-
-    - name: Notify Discord - Build Success
+    - name: Notify Discord - Deploy Success
       if: success()
       uses: Ilshidur/action-discord@master
       env:
         DISCORD_WEBHOOK: ${{ env.DISCORD_WEBHOOK }}
       with:
         args: |
-          ✅ **Build Success** - DPU WPF DataGrid NuGet Package
-          📦 Project built and packed successfully
-          🔗 Repository: ${{ github.repository }}
-          👤 Author: ${{ github.actor }}
-
-    - name: Notify Discord - Build Failed
-      if: failure()
-      uses: Ilshidur/action-discord@master
-      env:
-        DISCORD_WEBHOOK: ${{ env.DISCORD_WEBHOOK }}
-      with:
-        args: |
-          ❌ **Build Failed** - DPU WPF DataGrid NuGet Package
-          💥 Failed to build or pack the project
-          🔗 Repository: ${{ github.repository }}
-          👤 Author: ${{ github.actor }}
-          📝 Commit: `${{ github.sha }}`
-          🔍 Check logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
-    - name: Get package info for Discord notification
-      if: success()
-      id: package_info_discord
-      shell: bash
-      run: |
-        if [ -d "./nupkg" ] && [ "$(ls -A ./nupkg)" ]; then
-          nupkgFile=$(ls ./nupkg/*.nupkg | head -1)
-          packageName=$(basename "$nupkgFile" .nupkg)
-          echo "PACKAGE_NAME=$packageName" >> $GITHUB_ENV
-          echo "Package: $packageName"
-          
-          # Extract version from package name (assuming format: PackageName.Version.nupkg)
-          if [[ $packageName =~ \.([0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?)$ ]]; then
-            version="${BASH_REMATCH[1]}"
-            echo "PACKAGE_VERSION=$version" >> $GITHUB_ENV
-            echo "Version: $version"
-          fi
-        else
-          echo "No package found"
-        fi
-
-    - name: Notify Discord - Publish Success
-      if: success()
-      uses: Ilshidur/action-discord@master
-      env:
-        DISCORD_WEBHOOK: ${{ env.DISCORD_WEBHOOK }}
-      with:
-        args: |
-          📦 **NuGet Package Published** - DPU WPF DataGrid
+          📦 **Deploy Success** - DPU WPF DataGrid NuGet Package
           ✅ Package published to GitHub Packages successfully
           🏷️ Package: ${{ env.PACKAGE_NAME }}
           🔗 Version: ${{ env.PACKAGE_VERSION }}
           🔗 Repository: ${{ github.repository }}
           👤 Author: ${{ github.actor }}
 
-    - name: Notify Discord - Publish Failed
+    - name: Notify Discord - Deploy Failed
       if: failure()
       uses: Ilshidur/action-discord@master
       env:
         DISCORD_WEBHOOK: ${{ env.DISCORD_WEBHOOK }}
       with:
         args: |
-          ❌ **NuGet Package Publish Failed** - DPU WPF DataGrid
+          ❌ **Deploy Failed** - DPU WPF DataGrid NuGet Package
           💥 Failed to publish package to GitHub Packages
           🔗 Repository: ${{ github.repository }}
           👤 Author: ${{ github.actor }}
