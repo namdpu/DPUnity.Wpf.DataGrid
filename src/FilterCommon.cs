@@ -9,10 +9,7 @@
 
 #endregion (c) 2019 Gilles Macabies All right reserved
 
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Runtime.Serialization;
 using System.Windows.Controls;
 
