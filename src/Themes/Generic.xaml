@@ -5,7 +5,8 @@
                     xmlns:sys="clr-namespace:System;assembly=mscorlib"
                     xmlns:icon="https://dpunity.com/dev/wpf/ui/controls/packicon"
                     xmlns:hc="https://handyorg.github.io/handycontrol"
-                    xmlns:system="clr-namespace:System;assembly=mscorlib">
+                    xmlns:system="clr-namespace:System;assembly=mscorlib"
+                    xmlns:be="clr-namespace:DPUnity.Wpf.DpDataGrid.Behaviors">
 
     <!--  ICON  -->
     <ResourceDictionary.MergedDictionaries>
@@ -1178,6 +1179,8 @@
     <Style x:Key="FilterDatagridStyle"
            TargetType="{x:Type control:FilterDataGrid}"
            BasedOn="{StaticResource {x:Type control:FilterDataGrid}}">
+        <Setter Property="be:DataGridContextMenuBehavior.RestrictToRows"
+                Value="True" />
         <Setter Property="Padding"
                 Value="0" />
         <Setter Property="ShowRowsCount"
