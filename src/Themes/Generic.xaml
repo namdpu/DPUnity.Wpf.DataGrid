@@ -64,10 +64,9 @@
                 <ControlTemplate TargetType="{x:Type DataGridCell}">
                     <Border Background="{TemplateBinding Background}"
                             Padding="{TemplateBinding Padding}"
-                            SnapsToDevicePixels="True">
+                            >
                         <ContentPresenter VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
-                                          HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                          SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                                          HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" />
                     </Border>
                 </ControlTemplate>
             </Setter.Value>
@@ -168,7 +167,6 @@
                                         <Setter.Value>
                                             <ControlTemplate TargetType="Button">
                                                 <Border Background="Transparent"
-                                                        SnapsToDevicePixels="False"
                                                         UseLayoutRounding="True">
                                                     <Viewbox>
                                                         <!--  MAGNIFIER / DELETE ICON  Width="18"  -->
@@ -242,7 +240,6 @@
                                         <Setter.Value>
                                             <ControlTemplate TargetType="ToggleButton">
                                                 <Grid Background="Transparent"
-                                                      SnapsToDevicePixels="False"
                                                       UseLayoutRounding="True">
                                                     <Viewbox>
                                                         <Path x:Name="PathToggle"
@@ -469,7 +466,7 @@
                                         </Grid>
                                     </ControlTemplate>
                                 </ScrollViewer.Template>
-                                <ItemsPresenter SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                                <ItemsPresenter />
                             </ScrollViewer>
                             <!-- STATUS BAR & RESULT FILTER -->
                             <Border x:Name="BorderStatusBar"
@@ -598,7 +595,7 @@
                                 <ContentPresenter RecognizesAccessKey="True"
                                                   VerticalAlignment="Center"
                                                   MinWidth="20"
-                                                  SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                                                  />
                             </DockPanel>
                         </Border>
                         <Thumb x:Name="PART_LeftHeaderGripper"
@@ -631,7 +628,6 @@
         <Border x:Name="BorderButton"
                 Background="Transparent"
                 BorderThickness="0"
-                SnapsToDevicePixels="False"
                 UseLayoutRounding="True">
             <icon:PackIcon x:Name="Icon"
                            Kind="KeyboardArrowDown"
@@ -783,7 +779,6 @@
                                                         UseLayoutRounding="True">
                                                     <Grid x:Name="ContentGrid"
                                                           Background="Transparent"
-                                                          SnapsToDevicePixels="False"
                                                           UseLayoutRounding="True">
                                                         <Grid.ColumnDefinitions>
                                                             <ColumnDefinition Width="Auto" />
