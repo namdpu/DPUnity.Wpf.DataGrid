@@ -1202,24 +1202,17 @@
                 Value="Auto" />
         <Setter Property="HorizontalScrollBarVisibility"
                 Value="Auto" />
-        <Setter Property="VirtualizingStackPanel.IsVirtualizing"
-                Value="True" />
         <Setter Property="BorderBrush"
                 Value="{DynamicResource BorderBrush}" />
         <Setter Property="BorderThickness"
                 Value="1" />
-        <Setter Property="EnableRowVirtualization"
-                Value="True" />
-        <Setter Property="EnableColumnVirtualization"
-                Value="True" />
         <Setter Property="VirtualizingPanel.IsVirtualizing"
                 Value="True" />
         <Setter Property="VirtualizingPanel.VirtualizationMode"
                 Value="Recycling" />
         <Setter Property="VirtualizingPanel.IsVirtualizingWhenGrouping"
                 Value="True" />
-        <Setter Property="VirtualizingPanel.ScrollUnit"
-                Value="Pixel" />
+        <Setter Property="ScrollViewer.CanContentScroll" Value="True"/>
     </Style>
 
 
