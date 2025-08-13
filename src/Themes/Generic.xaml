@@ -63,8 +63,7 @@
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type DataGridCell}">
                     <Border Background="{TemplateBinding Background}"
-                            Padding="{TemplateBinding Padding}"
-                            >
+                            Padding="{TemplateBinding Padding}">
                         <ContentPresenter VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
                                           HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" />
                     </Border>
@@ -572,8 +571,8 @@
                                                 <icon:PackIcon x:Name="SortIcon"
                                                                Foreground="{DynamicResource PrimaryBrush}"
                                                                Height="15"
-                                                               Width="15" 
-                                                               Margin="0 0 0 -2"/>
+                                                               Width="15"
+                                                               Margin="0 0 0 -2" />
                                             </Grid>
                                             <ControlTemplate.Triggers>
                                                 <DataTrigger Binding="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type DataGridColumnHeader}}, Path=SortDirection}"
@@ -594,8 +593,7 @@
                                 </ToggleButton>
                                 <ContentPresenter RecognizesAccessKey="True"
                                                   VerticalAlignment="Center"
-                                                  MinWidth="20"
-                                                  />
+                                                  MinWidth="20" />
                             </DockPanel>
                         </Border>
                         <Thumb x:Name="PART_LeftHeaderGripper"
@@ -1202,24 +1200,18 @@
                 Value="Auto" />
         <Setter Property="HorizontalScrollBarVisibility"
                 Value="Auto" />
-        <Setter Property="VirtualizingStackPanel.IsVirtualizing"
-                Value="True" />
         <Setter Property="BorderBrush"
                 Value="{DynamicResource BorderBrush}" />
         <Setter Property="BorderThickness"
                 Value="1" />
-        <Setter Property="EnableRowVirtualization"
-                Value="True" />
-        <Setter Property="EnableColumnVirtualization"
-                Value="True" />
         <Setter Property="VirtualizingPanel.IsVirtualizing"
                 Value="True" />
         <Setter Property="VirtualizingPanel.VirtualizationMode"
                 Value="Recycling" />
         <Setter Property="VirtualizingPanel.IsVirtualizingWhenGrouping"
                 Value="True" />
-        <Setter Property="VirtualizingPanel.ScrollUnit"
-                Value="Pixel" />
+        <Setter Property="ScrollViewer.CanContentScroll"
+                Value="True" />
     </Style>
 
 
