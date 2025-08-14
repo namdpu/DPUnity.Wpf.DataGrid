@@ -238,7 +238,7 @@ namespace DPUnity.Wpf.DpDataGrid
 
         private bool startsWith;
 
-        private readonly Dictionary<string, Predicate<object>> criteria = [];
+        private readonly Dictionary<string, Predicate<object>> criteria = new();
 
         #endregion Private Fields
 
@@ -362,7 +362,7 @@ namespace DPUnity.Wpf.DpDataGrid
         /// </summary>
         public List<FilterItemDate> TreeViewItems
         {
-            get => treeView ?? [];
+            get => treeView ?? new List<FilterItemDate>();
             set
             {
                 treeView = value;
@@ -375,7 +375,7 @@ namespace DPUnity.Wpf.DpDataGrid
         /// </summary>
         public List<FilterItem> ListBoxItems
         {
-            get => listBoxItems ?? [];
+            get => listBoxItems ?? new List<FilterItem>();
             set
             {
                 listBoxItems = value;
@@ -421,20 +421,20 @@ namespace DPUnity.Wpf.DpDataGrid
         private FilterCommon CurrentFilter { get; set; }
         private ICollectionView CollectionViewSource { get; set; }
         private ICollectionView ItemCollectionView { get; set; }
-        private List<FilterCommon> GlobalFilterList { get; } = [];
+        private List<FilterCommon> GlobalFilterList { get; } = new();
 
         /// <summary>
         /// Popup filtered items (ListBox/TreeView)
         /// </summary>
         private IEnumerable<FilterItem> PopupViewItems =>
-            ItemCollectionView?.OfType<FilterItem>().Where(c => c.Level != 0) ?? [];
+            ItemCollectionView?.OfType<FilterItem>().Where(c => c.Level != 0) ?? new List<FilterItem>();
 
         /// <summary>
         /// Popup source collection (ListBox/TreeView)
         /// </summary>
         private IEnumerable<FilterItem> SourcePopupViewItems =>
             ItemCollectionView?.SourceCollection.OfType<FilterItem>().Where(c => c.Level != 0) ??
-            [];
+            new List<FilterItem>();
 
         #endregion Private Properties
 
@@ -464,8 +464,8 @@ namespace DPUnity.Wpf.DpDataGrid
                 // fill excluded Fields list with values
                 if (AutoGenerateColumns)
                 {
-                    excludedFields = [.. ExcludeFields.Split(',').Select(p => p.Trim())];
-                    excludedColumns = [.. ExcludeColumns.Split(',').Select(p => p.Trim())];
+                    excludedFields = new List<string>(ExcludeFields.Split(',').Select(p => p.Trim()));
+                    excludedColumns = new List<string>(ExcludeColumns.Split(',').Select(p => p.Trim()));
                 }
                 // generating custom columns
                 else if (collectionType != null) GeneratingCustomsColumn();
@@ -909,7 +909,7 @@ namespace DPUnity.Wpf.DpDataGrid
                         preset.PreviouslyFilteredItems = [.. preset.PreviouslyFilteredItems.Select(o => ConvertToType(o, preset.FieldType))];
 
                         // Get the items that are always present in the source collection
-                        preset.FilteredItems = [.. sourceObjectList.Where(c => preset.PreviouslyFilteredItems.Contains(c))];
+                        preset.FilteredItems = new List<object>(sourceObjectList.Where(c => preset.PreviouslyFilteredItems.Contains(c)));
 
                         // if no items are filtered, continue to the next column
                         if (preset.FilteredItems.Count == 0)
@@ -1049,26 +1049,32 @@ namespace DPUnity.Wpf.DpDataGrid
                         Label = key.ToString(Translate.Culture),
                         Initialize = true,
                         FieldType = fieldType,
-                        Children = [.. group.GroupBy(
-                            x => ((DateTime)x.Content).Month,
-                            (monthKey, monthGroup) => new FilterItemDate
-                            {
-                                Level = 2,
-                                Content = monthKey,
-                                Label = new DateTime(key, monthKey, 1).ToString("MMMM", Translate.Culture),
-                                Initialize = true,
-                                FieldType = fieldType,
-                                Children = [.. monthGroup.Select(x => new FilterItemDate
+                        Children = new List<FilterItemDate>(
+                            group.GroupBy(
+                                x => ((DateTime)x.Content).Month,
+                                (monthKey, monthGroup) => new FilterItemDate
                                 {
-                                    Level = 3,
-                                    Content = ((DateTime)x.Content).Day,
-                                    Label = ((DateTime)x.Content).ToString("dd", Translate.Culture),
+                                    Level = 2,
+                                    Content = monthKey,
+                                    Label = new DateTime(key, monthKey, 1).ToString("MMMM", Translate.Culture),
                                     Initialize = true,
                                     FieldType = fieldType,
-                                    Item = x
-                                })]
-                            })]
-                    }).ToList();
+                                    Children = new List<FilterItemDate>(
+                                        monthGroup.Select(x => new FilterItemDate
+                                        {
+                                            Level = 3,
+                                            Content = ((DateTime)x.Content).Day,
+                                            Label = ((DateTime)x.Content).ToString("dd", Translate.Culture),
+                                            Initialize = true,
+                                            FieldType = fieldType,
+                                            Item = x
+                                        })
+                                    )
+                                }
+                            )
+                        )
+                    }
+                ).ToList();
 
                 foreach (var year in years)
                 {
