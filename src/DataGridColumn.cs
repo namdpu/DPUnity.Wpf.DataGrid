@@ -6,14 +6,18 @@
 
 using DPUnity.Wpf.DpDataGrid.Converters;
 using DPUnity.Wpf.UI.Controls.PackIcon;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
+using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 // ReSharper disable ConvertTypeCheckPatternToNullCheck
 // ReSharper disable InvertIf
@@ -84,8 +88,8 @@ namespace DPUnity.Wpf.DpDataGrid
         {
             #region Public Properties
 
-            public string DisplayMember { get; set; }
-            public string SelectedValue { get; set; }
+            public string DisplayMember { get; set; } = string.Empty;
+            public string SelectedValue { get; set; } = string.Empty;
 
             #endregion Public Properties
         }
@@ -112,7 +116,7 @@ namespace DPUnity.Wpf.DpDataGrid
 
         #region Public Properties
 
-        public List<ItemsSourceMembers> ComboBoxItemsSource { get; set; }
+        public List<ItemsSourceMembers>? ComboBoxItemsSource { get; set; }
 
         public string FieldName
         {
@@ -146,8 +150,8 @@ namespace DPUnity.Wpf.DpDataGrid
                 var itemsSourceMembers = itemsSource.Cast<object>().Select(x =>
                     new ItemsSourceMembers
                     {
-                        SelectedValue = x.GetPropertyValue(SelectedValuePath).ToString(),
-                        DisplayMember = x.GetPropertyValue(DisplayMemberPath).ToString()
+                        SelectedValue = x.GetPropertyValue(SelectedValuePath)?.ToString() ?? string.Empty,
+                        DisplayMember = x.GetPropertyValue(DisplayMemberPath)?.ToString() ?? string.Empty
                     }).ToList();
 
                 ComboBoxItemsSource = itemsSourceMembers;
@@ -179,11 +183,11 @@ namespace DPUnity.Wpf.DpDataGrid
         #region Private Fields
 
         private const bool DebugMode = false;
-        private CultureInfo culture;
-        private Type fieldType;
-        private string originalValue;
-        private Regex regex;
-        private string stringFormat;
+        private CultureInfo? culture;
+        private Type? fieldType;
+        private string? originalValue;
+        private Regex? regex;
+        private string? stringFormat;
 
         #endregion Private Fields
 
@@ -195,6 +199,9 @@ namespace DPUnity.Wpf.DpDataGrid
         public void BuildRegex()
         {
             Debug.WriteLineIf(DebugMode, $"BuildRegex : {fieldType}");
+            
+            if (culture == null || fieldType == null) return;
+            
             var nfi = culture.NumberFormat;
 
             // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
@@ -220,7 +227,7 @@ namespace DPUnity.Wpf.DpDataGrid
                 case TypeCode.Decimal:
                 case TypeCode.Double:
                 case TypeCode.Single:
-                    var decimalSeparator = stringFormat.Contains("c")
+                    var decimalSeparator = (stringFormat?.Contains("c") == true)
                         ? Regex.Escape(nfi.CurrencyDecimalSeparator)
                         : Regex.Escape(nfi.NumberDecimalSeparator);
                     regex = new Regex($@"^{nfi.NegativeSign}?(\d+({decimalSeparator}\d*)?|{decimalSeparator}\d*)?$");
@@ -370,7 +377,7 @@ namespace DPUnity.Wpf.DpDataGrid
             {
                 var newText = textBox.Text.Insert(textBox.SelectionStart, pasteText);
 
-                if (!regex.IsMatch(newText))
+                if (regex != null && !regex.IsMatch(newText))
                 {
                     e.CancelCommand();
                 }
@@ -389,7 +396,7 @@ namespace DPUnity.Wpf.DpDataGrid
             if (sender is TextBox textBox)
             {
                 var newText = textBox.Text.Insert(textBox.SelectionStart, e.Text);
-                var isNumeric = regex.IsMatch(newText);
+                var isNumeric = regex?.IsMatch(newText) ?? false;
 
                 Debug.WriteLineIf(DebugMode, $"originalValue : {originalValue,-15}" +
                                              $"originalText : {textBox.Text,-15}" +
@@ -530,16 +537,18 @@ namespace DPUnity.Wpf.DpDataGrid
 
         #region GenerateElement
 
-        public string TemplateName { get; set; }
+        public string? TemplateName { get; set; }
 
         protected override FrameworkElement GenerateElement(DataGridCell cell, object dataItem)
         {
             Binding binding;
 
-            ContentControl content = new ContentControl()
+            ContentControl content = new ContentControl();
+            
+            if (!string.IsNullOrEmpty(TemplateName))
             {
-                ContentTemplate = (DataTemplate)cell.FindResource(TemplateName)
-            };
+                content.ContentTemplate = (DataTemplate)cell.FindResource(TemplateName);
+            }
 
             if (Binding != null)
             {
@@ -700,8 +709,8 @@ namespace DPUnity.Wpf.DpDataGrid
         {
             #region Public Properties
 
-            public string DisplayMember { get; set; }
-            public string SelectedValue { get; set; }
+            public string DisplayMember { get; set; } = string.Empty;
+            public string SelectedValue { get; set; } = string.Empty;
 
             #endregion Public Properties
         }
@@ -728,7 +737,7 @@ namespace DPUnity.Wpf.DpDataGrid
 
         #region Public Properties
 
-        public List<ItemsSourceMembers> ComboBoxItemsSource { get; set; }
+        public List<ItemsSourceMembers>? ComboBoxItemsSource { get; set; }
 
         public string FieldName
         {
@@ -762,8 +771,8 @@ namespace DPUnity.Wpf.DpDataGrid
                 var itemsSourceMembers = itemsSource.Cast<object>().Select(x =>
                     new ItemsSourceMembers
                     {
-                        SelectedValue = x.GetPropertyValue(SelectedValuePath).ToString(),
-                        DisplayMember = x.GetPropertyValue(DisplayMemberPath).ToString()
+                        SelectedValue = x.GetPropertyValue(SelectedValuePath)?.ToString() ?? string.Empty,
+                        DisplayMember = x.GetPropertyValue(DisplayMemberPath)?.ToString() ?? string.Empty
                     }).ToList();
 
                 ComboBoxItemsSource = itemsSourceMembers;
