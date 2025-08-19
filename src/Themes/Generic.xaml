@@ -299,17 +299,52 @@
     <!--  FILTERDATAGRID STYLE  -->
     <Style BasedOn="{StaticResource {x:Type DataGrid}}"
            TargetType="{x:Type control:FilterDataGrid}">
-        <Setter Property="GridLinesVisibility"
-                Value="Horizontal" />
+        <Setter Property="be:DataGridContextMenuBehavior.RestrictToRows"
+                Value="True" />
+        <Setter Property="Padding"
+                Value="0" />
+        <Setter Property="ShowRowsCount"
+                Value="True" />
+        <Setter Property="Background"
+                Value="{DynamicResource SecondaryRegionBrush}" />
+        <Setter Property="FontSize"
+                Value="14" />
+        <Setter Property="RowStyle"
+                Value="{DynamicResource DP_DataGridRowStyle.Small}" />
+        <Setter Property="Margin"
+                Value="10,0,0,0" />
+        <Setter Property="AlternatingRowBackground"
+                Value="{DynamicResource SecondaryRegionBrush}" />
+        <Setter Property="AlternationCount"
+                Value="2" />
+        <Setter Property="CanUserResizeRows"
+                Value="True" />
         <Setter Property="HorizontalGridLinesBrush"
                 Value="{DynamicResource BorderBrush}" />
-        <Setter Property="Background"
-                Value="{DynamicResource RegionBrush}" />
-        <!-- Compact row settings -->
+        <Setter Property="VerticalGridLinesBrush"
+                Value="{DynamicResource BorderBrush}" />
+        <Setter Property="VerticalScrollBarVisibility"
+                Value="Auto" />
+        <Setter Property="HorizontalScrollBarVisibility"
+                Value="Auto" />
+        <Setter Property="BorderBrush"
+                Value="{DynamicResource BorderBrush}" />
+        <Setter Property="BorderThickness"
+                Value="1" />
+        <Setter Property="EnableRowVirtualization"
+                Value="True" />
+        <Setter Property="VirtualizingPanel.IsVirtualizing"
+                Value="True" />
+        <Setter Property="VirtualizingPanel.VirtualizationMode"
+                Value="Recycling" />
+        <Setter Property="VirtualizingPanel.IsVirtualizingWhenGrouping"
+                Value="True" />
+        <Setter Property="ScrollViewer.CanContentScroll"
+                Value="True" />
+        <Setter Property="GridLinesVisibility"
+                Value="Horizontal" />
         <Setter Property="RowHeight"
                 Value="37" />
-        <Setter Property="FontSize"
-                Value="12" />
         <Setter Property="ColumnHeaderHeight"
                 Value="30" />
         <!-- DATAGRID TEMPLATE -->
@@ -357,8 +392,7 @@
                                                     Background="Transparent"
                                                     Command="{x:Static control:FilterDataGrid.RemoveAllFilters}"
                                                     Cursor="Hand"
-                                                    ToolTip="{Binding RelativeSource={RelativeSource AncestorType={x:Type control:FilterDataGrid}},
-                      Path=Translate.RemoveAll}"
+                                                    ToolTip="{Binding RelativeSource={RelativeSource AncestorType={x:Type control:FilterDataGrid}}, Path=Translate.RemoveAll}"
                                                     ToolTipService.Placement="Left"
                                                     ToolTipService.VerticalOffset="24">
                                                 <Button.Template>
@@ -603,6 +637,14 @@
                                HorizontalAlignment="Right"
                                Style="{StaticResource ColumnHeaderGripperStyle}" />
                     </hc:SimplePanel>
+                    <ControlTemplate.Triggers>
+                        <DataTrigger Binding="{Binding SortDirection, RelativeSource={RelativeSource Self}}"
+                                     Value="{x:Null}">
+                            <Setter TargetName="ToggleButtonSortDirection"
+                                    Property="Visibility"
+                                    Value="Collapsed" />
+                        </DataTrigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
@@ -1123,7 +1165,6 @@
 
 
     <!--dpu custom style-->
-
     <Style x:Key="DP_DataGridRowBaseStyle"
            TargetType="DataGridRow"
            BasedOn="{StaticResource DataGridRowStyle.Small}">
@@ -1172,48 +1213,8 @@
     <Style x:Key="FilterDatagridStyle"
            TargetType="{x:Type control:FilterDataGrid}"
            BasedOn="{StaticResource {x:Type control:FilterDataGrid}}">
-        <Setter Property="be:DataGridContextMenuBehavior.RestrictToRows"
-                Value="True" />
-        <Setter Property="Padding"
-                Value="0" />
-        <Setter Property="ShowRowsCount"
-                Value="True" />
-        <Setter Property="Background"
-                Value="{DynamicResource SecondaryRegionBrush}" />
-        <Setter Property="FontSize"
-                Value="14" />
-        <Setter Property="RowStyle"
-                Value="{DynamicResource DP_DataGridRowStyle.Small}" />
-        <Setter Property="Margin"
-                Value="10,0,0,0" />
-        <Setter Property="AlternatingRowBackground"
-                Value="{DynamicResource SecondaryRegionBrush}" />
-        <Setter Property="AlternationCount"
-                Value="2" />
-        <Setter Property="CanUserResizeRows"
-                Value="True" />
-        <Setter Property="HorizontalGridLinesBrush"
-                Value="{DynamicResource BorderBrush}" />
-        <Setter Property="VerticalGridLinesBrush"
-                Value="{DynamicResource BorderBrush}" />
-        <Setter Property="VerticalScrollBarVisibility"
-                Value="Auto" />
-        <Setter Property="HorizontalScrollBarVisibility"
-                Value="Auto" />
-        <Setter Property="BorderBrush"
-                Value="{DynamicResource BorderBrush}" />
-        <Setter Property="BorderThickness"
-                Value="1" />
-        <Setter Property="VirtualizingPanel.IsVirtualizing"
-                Value="True" />
-        <Setter Property="VirtualizingPanel.VirtualizationMode"
-                Value="Recycling" />
-        <Setter Property="VirtualizingPanel.IsVirtualizingWhenGrouping"
-                Value="True" />
-        <Setter Property="ScrollViewer.CanContentScroll"
-                Value="True" />
+        
     </Style>
-
 
     <!--FilterGrid scrollbar styles-->
     <ControlTemplate x:Key="VerticalScrollBarTemplate"
@@ -1397,7 +1398,6 @@
             </Setter.Value>
         </Setter>
     </Style>
-    <!--End FilterGrid scrollbar styles-->
 
     <Style x:Key="DP_GroupByHeaderStyle"
            TargetType="{x:Type GroupItem}">
