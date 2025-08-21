@@ -7,29 +7,24 @@
                     xmlns:hc="https://handyorg.github.io/handycontrol"
                     xmlns:system="clr-namespace:System;assembly=mscorlib"
                     xmlns:be="clr-namespace:DPUnity.Wpf.DpDataGrid.Behaviors">
-
-    <!--  ICON  -->
+    <!-- ICON -->
     <ResourceDictionary.MergedDictionaries>
         <hc:IntellisenseResources Source="/HandyControl;Component/DesignTime/DesignTimeResources.xaml" />
         <ResourceDictionary Source="/DPUnity.Wpf.DpDataGrid;component/Themes/Icons.xaml" />
         <ResourceDictionary Source="/DPUnity.Wpf.UI;component/Styles/DPUnityResources.xaml" />
     </ResourceDictionary.MergedDictionaries>
-
     <SolidColorBrush x:Key="PrimaryBrush60"
                      Opacity="0.6"
                      Color="#03AB54" />
-
-    <!--  CONVERTERS  -->
+    <!-- CONVERTERS -->
     <converters:StringFormatConverter x:Key="StringFormatConverter" />
     <converters:SolidBrushToColorConverter x:Key="SolidBrushToColorConverter" />
     <converters:SumConverter x:Key="SumConverter" />
     <converters:AverageConverter x:Key="AverageConverter" />
-
-    <!--  INITIAL POPUP SIZE  -->
+    <!-- INITIAL POPUP SIZE -->
     <sys:Double x:Key="PopupHeight">420</sys:Double>
     <sys:Double x:Key="PopupWidth">262</sys:Double>
     <sys:Boolean x:Key="StayOpen">False</sys:Boolean>
-
     <Style TargetType="{x:Type DataGridRowHeader}">
         <Setter Property="Background"
                 Value="Transparent" />
@@ -42,8 +37,7 @@
         <Setter Property="VerticalContentAlignment"
                 Value="Center" />
     </Style>
-
-    <!--  COMPACT DATAGRID CELL STYLE  -->
+    <!-- COMPACT DATAGRID CELL STYLE -->
     <Style TargetType="{x:Type DataGridCell}">
         <Setter Property="Margin"
                 Value="0" />
@@ -78,11 +72,9 @@
                 <Setter Property="Foreground"
                         Value="{Binding RelativeSource={RelativeSource AncestorType={x:Type DataGridRow}}, Path=Foreground}" />
             </Trigger>
-
         </Style.Triggers>
     </Style>
-
-    <!--  PLACEHOLDER SEARCH BOX  -->
+    <!-- PLACEHOLDER SEARCH BOX -->
     <Style x:Key="PlaceHolder"
            TargetType="{x:Type TextBox}">
         <Setter Property="Background"
@@ -102,8 +94,7 @@
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-
-                        <!--  Col:0 SEARCH TEXTBOX  -->
+                        <!-- Col:0 SEARCH TEXTBOX -->
                         <TextBox x:Name="TextSource"
                                  Grid.Column="0"
                                  Margin="{TemplateBinding Margin}"
@@ -152,8 +143,7 @@
                                 </Style>
                             </TextBox.Style>
                         </TextBox>
-
-                        <!--  Col:1 BUTTON CLEAR FILTER  -->
+                        <!-- Col:1 BUTTON CLEAR FILTER -->
                         <Button x:Name="ClearSearchBoxBtn"
                                 Grid.Column="1"
                                 Margin="2"
@@ -168,7 +158,7 @@
                                                 <Border Background="Transparent"
                                                         UseLayoutRounding="True">
                                                     <Viewbox>
-                                                        <!--  MAGNIFIER / DELETE ICON  Width="18"  -->
+                                                        <!-- MAGNIFIER / DELETE ICON Width="18" -->
                                                         <Path x:Name="PathButton"
                                                               Height="16"
                                                               Margin="0"
@@ -212,14 +202,12 @@
                                 </Style>
                             </Button.Style>
                         </Button>
-
-                        <!--  Col:2 SEPARATOR  -->
+                        <!-- Col:2 SEPARATOR -->
                         <Border Grid.Column="2"
                                 Width="1"
                                 Margin="2,0,2,0"
                                 Background="{DynamicResource BorderBrush}" />
-
-                        <!--  Col:3  TOGGLE BUTTON  -->
+                        <!-- Col:3 TOGGLE BUTTON -->
                         <ToggleButton Name="SearchToggleButton"
                                       Grid.Column="3"
                                       Width="21"
@@ -269,8 +257,7 @@
                             </ToggleButton.Style>
                         </ToggleButton>
                     </Grid>
-
-                    <!--  PLACEHOLDER TEXT  -->
+                    <!-- PLACEHOLDER TEXT -->
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsFocused"
                                  Value="True">
@@ -295,8 +282,7 @@
             </Setter.Value>
         </Setter>
     </Style>
-
-    <!--  FILTERDATAGRID STYLE  -->
+    <!-- FILTERDATAGRID STYLE -->
     <Style BasedOn="{StaticResource {x:Type DataGrid}}"
            TargetType="{x:Type control:FilterDataGrid}">
         <Setter Property="be:DataGridContextMenuBehavior.RestrictToRows"
@@ -308,7 +294,7 @@
         <Setter Property="Background"
                 Value="{DynamicResource SecondaryRegionBrush}" />
         <Setter Property="FontSize"
-                Value="14" />
+                Value="12" />
         <Setter Property="RowStyle"
                 Value="{DynamicResource DP_DataGridRowStyle.Small}" />
         <Setter Property="Margin"
@@ -343,10 +329,10 @@
                 Value="True" />
         <Setter Property="GridLinesVisibility"
                 Value="Horizontal" />
-        <Setter Property="RowHeight"
-                Value="37" />
         <Setter Property="ColumnHeaderHeight"
-                Value="30" />
+                Value="22" />
+        <Setter Property="RowHeight"
+                Value="29" />
         <!-- DATAGRID TEMPLATE -->
         <Setter Property="Template">
             <Setter.Value>
@@ -385,7 +371,7 @@
                                                     Grid.Row="0"
                                                     Grid.Column="2"
                                                     Width="30"
-                                                    Height="30"
+                                                    Height="22"
                                                     Margin="-5 0 0 0"
                                                     Padding="0"
                                                     BorderThickness="0"
@@ -437,7 +423,7 @@
                                             <Border Grid.Row="0"
                                                     Grid.Column="0"
                                                     Width="{Binding CellsPanelHorizontalOffset, RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}}"
-                                                    Height="28"
+                                                    Height="22"
                                                     Padding="10"
                                                     Margin="0 0 0 -1"
                                                     BorderThickness="0 0 0 1"
@@ -568,9 +554,13 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+        <Style.Resources>
+            <Style TargetType="TextBox"
+                   BasedOn="{StaticResource DataGridEditingTextColumnStyle.Small}">
+            </Style>
+        </Style.Resources>
     </Style>
-
-    <!--  DATAGRID COLUMN HEADER STYLE  -->
+    <!-- DATAGRID COLUMN HEADER STYLE -->
     <Style BasedOn="{StaticResource {x:Type DataGridColumnHeader}}"
            TargetType="DataGridColumnHeader">
         <Setter Property="VerticalContentAlignment"
@@ -661,8 +651,7 @@
             </Trigger>
         </Style.Triggers>
     </Style>
-
-    <!--  FILTER BUTTON CONTROLTEMPLAXTE  -->
+    <!-- FILTER BUTTON CONTROLTEMPLAXTE -->
     <ControlTemplate x:Key="FilterButtonControlTemplate"
                      TargetType="{x:Type Button}">
         <Border x:Name="BorderButton"
@@ -673,7 +662,7 @@
                            Kind="KeyboardArrowDown"
                            Height="14"
                            Width="14"
-                           Margin="0 0 5 5"
+                           Margin="0 0 0 5"
                            Foreground="{DynamicResource PrimaryTextBrush}"
                            Style="{DynamicResource DP_IconStyle}" />
         </Border>
@@ -701,27 +690,22 @@
             </Trigger>
         </ControlTemplate.Triggers>
     </ControlTemplate>
-
-    <!--  DATATEMPLATE OF DATAGRID COLUMN HEADER  -->
+    <!-- DATATEMPLATE OF DATAGRID COLUMN HEADER -->
     <DataTemplate x:Key="DataGridHeaderTemplate">
-
-        <!--  HEADER STRECH TO CONTENTPRESENTER OF DATAGRIDCOLUMNHEADER  -->
+        <!-- HEADER STRECH TO CONTENTPRESENTER OF DATAGRIDCOLUMNHEADER -->
         <Grid x:Name="ContainerFilterGrid"
               Width="{Binding RelativeSource={RelativeSource AncestorType={x:Type ContentPresenter}, Mode=FindAncestor, AncestorLevel=1}, Path=ActualWidth}">
-
-            <!--  HEADER/BUTTON  -->
+            <!-- HEADER/BUTTON -->
             <Grid x:Name="GridHeaderButton"
                   ShowGridLines="False">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-
-                <!--  RENDER THE HEADER CONTENT -->
+                <!-- RENDER THE HEADER CONTENT -->
                 <ContentPresenter Grid.Column="0"
                                   VerticalAlignment="Center"
                                   Content="{Binding}" />
-
                 <!--
                     FILTER BUTTON
                     FilterState.IsFiltered => Attached Property : see FilterHelpers.cs
@@ -730,6 +714,7 @@
                         Grid.Column="1"
                         Width="20"
                         Height="20"
+                        Margin="0,0,-2,0"
                         control:FilterState.IsFiltered="False"
                         Command="{x:Static control:FilterDataGrid.ShowFilter}"
                         Cursor="Hand">
@@ -743,8 +728,7 @@
                     </Button.Style>
                 </Button>
             </Grid>
-
-            <!--  POPUP  -->
+            <!-- POPUP -->
             <Popup Name="FilterPopup"
                    AllowsTransparency="True"
                    IsOpen="False"
@@ -752,24 +736,22 @@
                    StaysOpen="{StaticResource StayOpen}">
                 <Popup.Resources>
                     <!--
-                    Fix default background color of border when value is not provided  
-                    
+                    Fix default background color of border when value is not provided
+                   
                     **** DOES NOT WORK if parent is a Page or UserControl (cannot find parent window) ****
-                    
+                   
                     <SolidColorBrush
                         x:Key="BackgroundColor"
                         Opacity="1"
                         Color="{Binding RelativeSource={RelativeSource AncestorType={x:Type Window}}, Path=Background, Converter={StaticResource SolidBrushToColorConverter}}" />
-                    
-                    Background="{Binding RelativeSource={RelativeSource AncestorType={x:Type control:FilterDataGrid}}, Path=FilterPopupBackground}, 
+                   
+                    Background="{Binding RelativeSource={RelativeSource AncestorType={x:Type control:FilterDataGrid}}, Path=FilterPopupBackground},
                     TargetNullValue={StaticResource BackgroundColor}"
                     -->
-
                     <SolidColorBrush x:Key="BorderColor"
                                      Opacity="0.4"
                                      Color="{Binding RelativeSource={RelativeSource AncestorType={x:Type control:FilterDataGrid}}, Path=Foreground, Converter={StaticResource SolidBrushToColorConverter}}" />
                 </Popup.Resources>
-
                 <Border x:Name="PopUpBorder"
                         Padding="0"
                         Background="{DynamicResource RegionBrush}"
@@ -780,7 +762,6 @@
                           MinHeight="{StaticResource PopupHeight}"
                           ShowGridLines="False"
                           ZIndex="1">
-
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"
                                               MinWidth="32" />
@@ -793,8 +774,7 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
-
-                        <!--  Row 0: BUTTON CLEAR FILTER  -->
+                        <!-- Row 0: BUTTON CLEAR FILTER -->
                         <Button x:Name="ClearFilterBnt"
                                 Grid.Row="0"
                                 Grid.Column="0"
@@ -877,21 +857,18 @@
                                 </Style>
                             </Button.Style>
                         </Button>
-
-                        <!--  Row 1: SEPARATOR / SEARCH BOX  -->
+                        <!-- Row 1: SEPARATOR / SEARCH BOX -->
                         <Grid Grid.Row="1"
                               Grid.ColumnSpan="2">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
-
-                            <!--  Row 1: SEPARATOR  -->
+                            <!-- Row 1: SEPARATOR -->
                             <Separator Grid.Row="0"
                                        Margin="5,2"
                                        Background="{Binding RelativeSource={RelativeSource AncestorType={x:Type Border}, Mode=FindAncestor, AncestorLevel=1}, Path=BorderBrush}" />
-
-                            <!--  Row 2: SEARCH BOX  -->
+                            <!-- Row 2: SEARCH BOX -->
                             <Border Grid.Row="1"
                                     Margin="5,4,4,5"
                                     Padding="0,2"
@@ -904,7 +881,6 @@
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-
                                     <TextBox x:Name="SearchBox"
                                              Grid.Column="0"
                                              Margin="0"
@@ -939,14 +915,12 @@
                                 </Style>
                             </Grid.Style>
                         </Grid>
-
-                        <!--  Row 2, Col 1 : (LISTBOX/TREEVIEW)  -->
+                        <!-- Row 2, Col 1 : (LISTBOX/TREEVIEW) -->
                         <Grid x:Name="GridItemControl"
                               Grid.Row="2"
                               Grid.ColumnSpan="2"
                               Margin="5"
                               DataContext="{Binding RelativeSource={RelativeSource AncestorType={x:Type control:FilterDataGrid}}}">
-
                             <ListBox x:Name="PopupListBox"
                                      Grid.Row="0"
                                      Padding="2"
@@ -1018,7 +992,6 @@
                                     </Style>
                                 </ListBox.Style>
                             </ListBox>
-
                             <TreeView x:Name="PopupTreeview"
                                       Grid.Row="0"
                                       control:ScrollToTopBehavior.ScrollToTop="True"
@@ -1079,8 +1052,7 @@
                                 </TreeView.Style>
                             </TreeView>
                         </Grid>
-
-                        <!--  Row 3: OK/CANCEL BUTTON  -->
+                        <!-- Row 3: OK/CANCEL BUTTON -->
                         <UniformGrid Grid.Row="3"
                                      Grid.ColumnSpan="2"
                                      Margin="0,5,4,5"
@@ -1088,7 +1060,6 @@
                                      Background="Transparent"
                                      Columns="2"
                                      DataContext="{Binding RelativeSource={RelativeSource AncestorType={x:Type control:FilterDataGrid}}}">
-
                             <Button Width="100"
                                     Margin="0"
                                     HorizontalAlignment="Left"
@@ -1096,7 +1067,6 @@
                                     Content="{Binding Translate.Ok}"
                                     Cursor="Hand"
                                     TabIndex="3" />
-
                             <Button Width="100"
                                     Margin="6,0,0,0"
                                     HorizontalAlignment="Right"
@@ -1106,8 +1076,7 @@
                                     Style="{DynamicResource ButtonDanger}"
                                     TabIndex="4" />
                         </UniformGrid>
-
-                        <!--  Row 4: RESIZE GRIP  -->
+                        <!-- Row 4: RESIZE GRIP -->
                         <Thumb x:Name="PopupThumb"
                                Grid.Row="4"
                                Grid.Column="0"
@@ -1162,8 +1131,6 @@
             </Popup>
         </Grid>
     </DataTemplate>
-
-
     <!--dpu custom style-->
     <Style x:Key="DP_DataGridRowBaseStyle"
            TargetType="DataGridRow"
@@ -1178,12 +1145,11 @@
             </Trigger>
         </Style.Triggers>
     </Style>
-
     <Style x:Key="DP_DataGridRowStyle.Small"
            TargetType="DataGridRow"
            BasedOn="{StaticResource DP_DataGridRowBaseStyle}">
         <Setter Property="MinHeight"
-                Value="36" />
+                Value="25" />
         <Setter Property="Background"
                 Value="{Binding RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}, Path=RowBackground}" />
         <Style.Triggers>
@@ -1209,13 +1175,6 @@
             </Trigger>
         </Style.Triggers>
     </Style>
-
-    <Style x:Key="FilterDatagridStyle"
-           TargetType="{x:Type control:FilterDataGrid}"
-           BasedOn="{StaticResource {x:Type control:FilterDataGrid}}">
-        
-    </Style>
-
     <!--FilterGrid scrollbar styles-->
     <ControlTemplate x:Key="VerticalScrollBarTemplate"
                      TargetType="{x:Type ScrollBar}">
@@ -1278,7 +1237,6 @@
             </Trigger>
         </ControlTemplate.Triggers>
     </ControlTemplate>
-
     <Style x:Key="DP_VerticalScrollBarStyle"
            TargetType="{x:Type ScrollBar}">
         <Setter Property="Orientation"
@@ -1286,7 +1244,6 @@
         <Setter Property="Template"
                 Value="{StaticResource VerticalScrollBarTemplate}" />
     </Style>
-
     <ControlTemplate x:Key="HorizontalScrollBarTemplate"
                      TargetType="{x:Type ScrollBar}">
         <Grid>
@@ -1347,7 +1304,6 @@
             </Trigger>
         </ControlTemplate.Triggers>
     </ControlTemplate>
-
     <Style x:Key="DP_HorizontalScrollBarStyle"
            TargetType="{x:Type ScrollBar}">
         <Setter Property="Orientation"
@@ -1355,7 +1311,6 @@
         <Setter Property="Template"
                 Value="{StaticResource HorizontalScrollBarTemplate}" />
     </Style>
-
     <Style x:Key="DP_ScrollBarThumb"
            TargetType="{x:Type Thumb}">
         <Setter Property="Template">
@@ -1369,7 +1324,6 @@
             </Setter.Value>
         </Setter>
     </Style>
-
     <Style x:Key="DP_HorizontalScrollBarThumb"
            TargetType="{x:Type Thumb}">
         <Setter Property="Template">
@@ -1383,7 +1337,6 @@
             </Setter.Value>
         </Setter>
     </Style>
-
     <Style x:Key="DP_RepeatIconButton"
            TargetType="RepeatButton">
         <Setter Property="Template">
@@ -1398,7 +1351,6 @@
             </Setter.Value>
         </Setter>
     </Style>
-
     <Style x:Key="DP_GroupByHeaderStyle"
            TargetType="{x:Type GroupItem}">
         <Setter Property="Template">
@@ -1441,7 +1393,6 @@
                         </Expander.Header>
                         <ItemsPresenter />
                     </Expander>
-
                     <ControlTemplate.Triggers>
                         <DataTrigger Binding="{Binding ColumnSumOnGroupBy, RelativeSource={RelativeSource AncestorType={x:Type control:FilterDataGrid}}}"
                                      Value="">
@@ -1455,7 +1406,6 @@
                                     Property="Visibility"
                                     Value="Collapsed" />
                         </DataTrigger>
-
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
@@ -1467,7 +1417,6 @@
         <Setter Property="VirtualizingPanel.IsVirtualizingWhenGrouping"
                 Value="True" />
     </Style>
-
     <Style x:Key="DP_DataGridCheckBoxCell"
            BasedOn="{StaticResource DataGridCellStyle}"
            TargetType="{x:Type DataGridCell}">
