@@ -6,12 +6,9 @@
 
 using DPUnity.Wpf.DpDataGrid.Converters;
 using DPUnity.Wpf.UI.Controls.PackIcon;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
-using System.Linq;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -199,9 +196,9 @@ namespace DPUnity.Wpf.DpDataGrid
         public void BuildRegex()
         {
             Debug.WriteLineIf(DebugMode, $"BuildRegex : {fieldType}");
-            
+
             if (culture == null || fieldType == null) return;
-            
+
             var nfi = culture.NumberFormat;
 
             // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
@@ -480,7 +477,7 @@ namespace DPUnity.Wpf.DpDataGrid
         protected override FrameworkElement GenerateEditingElement(DataGridCell cell, object dataItem)
         {
             var element = base.GenerateEditingElement(cell, dataItem);
-            element.SetResourceReference(FrameworkElement.StyleProperty, "TextBoxBaseStyle");
+            element.SetResourceReference(FrameworkElement.StyleProperty, "TextBox.Small");
             return element;
         }
 
@@ -544,7 +541,7 @@ namespace DPUnity.Wpf.DpDataGrid
             Binding binding;
 
             ContentControl content = new ContentControl();
-            
+
             if (!string.IsNullOrEmpty(TemplateName))
             {
                 content.ContentTemplate = (DataTemplate)cell.FindResource(TemplateName);
