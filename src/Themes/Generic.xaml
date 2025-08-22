@@ -304,7 +304,7 @@
         <Setter Property="AlternationCount"
                 Value="2" />
         <Setter Property="CanUserResizeRows"
-                Value="True" />
+                Value="False" />
         <Setter Property="HorizontalGridLinesBrush"
                 Value="{DynamicResource BorderBrush}" />
         <Setter Property="VerticalGridLinesBrush"
@@ -364,7 +364,7 @@
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="Auto" />
                                                 <RowDefinition Height="*" />
-                                                <RowDefinition Height="30" />
+                                                <RowDefinition Height="Auto" />
                                             </Grid.RowDefinitions>
                                             <!-- REMOVE ALL FILTERS BUTTON -->
                                             <Button x:Name="ButtonRemoveAll"
@@ -1248,60 +1248,36 @@
                      TargetType="{x:Type ScrollBar}">
         <Grid>
             <Grid x:Name="HorizontalScrollBarGrid"
-                  Height="15"
+                  Height="0"
                   Background="{DynamicResource SecondaryRegionBrush}">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <RepeatButton x:Name="LeftButton"
-                              Command="ScrollBar.LineLeftCommand"
-                              CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
-                              Margin="-20 -8 0 0"
-                              Foreground="{DynamicResource SecondaryTextBrush}"
-                              Style="{DynamicResource DP_RepeatIconButton}">
-                    <icon:PackIcon Kind="MenuLeft"
-                                   Style="{DynamicResource DP_IconStyle}"
-                                   Height="15" />
-                </RepeatButton>
-                <Track Grid.Column="1"
-                       Name="PART_Track"
+                <Track Name="PART_Track"
                        MinWidth="50">
                     <Track.Thumb>
                         <Thumb Style="{DynamicResource DP_HorizontalScrollBarThumb}"
-                               Height="10" />
+                               Height="8" />
                     </Track.Thumb>
                 </Track>
-                <RepeatButton x:Name="RightButton"
-                              Grid.Column="2"
-                              Command="ScrollBar.LineRightCommand"
-                              CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
-                              Margin="0 -8 0 0"
-                              Foreground="{DynamicResource SecondaryTextBrush}"
-                              Style="{DynamicResource DP_RepeatIconButton}">
-                    <icon:PackIcon Kind="MenuRight"
-                                   Style="{DynamicResource DP_IconStyle}"
-                                   Height="15" />
-                </RepeatButton>
             </Grid>
         </Grid>
         <ControlTemplate.Triggers>
-            <Trigger Property="IsMouseOver"
-                     Value="False">
+            <Trigger Property="Visibility"
+                     Value="Visible">
+                <Setter TargetName="HorizontalScrollBarGrid"
+                        Property="Height"
+                        Value="12" />
+            </Trigger>
+            <MultiTrigger>
+                <MultiTrigger.Conditions>
+                    <Condition Property="Visibility" Value="Visible" />
+                    <Condition Property="IsMouseOver" Value="False" />
+                </MultiTrigger.Conditions>
                 <Setter TargetName="HorizontalScrollBarGrid"
                         Property="Height"
                         Value="3" />
-                <Setter TargetName="LeftButton"
-                        Property="Visibility"
-                        Value="Hidden" />
-                <Setter TargetName="RightButton"
-                        Property="Visibility"
-                        Value="Hidden" />
                 <Setter TargetName="PART_Track"
                         Property="VerticalAlignment"
                         Value="Bottom" />
-            </Trigger>
+            </MultiTrigger>
         </ControlTemplate.Triggers>
     </ControlTemplate>
     <Style x:Key="DP_HorizontalScrollBarStyle"
