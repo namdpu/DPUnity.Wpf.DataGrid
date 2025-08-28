@@ -162,7 +162,7 @@ namespace DPUnity.Wpf.DpDataGrid
         protected override FrameworkElement GenerateEditingElement(DataGridCell cell, object dataItem)
         {
             var element = base.GenerateEditingElement(cell, dataItem);
-            element.SetResourceReference(FrameworkElement.StyleProperty, "ComboBoxBaseStyle");
+            element.SetResourceReference(FrameworkElement.StyleProperty, "ComboBox.Small");
             return element;
         }
 
@@ -658,7 +658,6 @@ namespace DPUnity.Wpf.DpDataGrid
                 Height = IconHeight,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
-                Style = (Style)Application.Current.Resources["DP_IconStyle"]
             };
 
             if (Binding is Binding baseBinding)
