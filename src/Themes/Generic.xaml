@@ -21,6 +21,7 @@
     <converters:SolidBrushToColorConverter x:Key="SolidBrushToColorConverter" />
     <converters:SumConverter x:Key="SumConverter" />
     <converters:AverageConverter x:Key="AverageConverter" />
+    <converters:BooleanToWidthConverter x:Key="BooleanToWidthConverter" />
     <!-- INITIAL POPUP SIZE -->
     <sys:Double x:Key="PopupHeight">420</sys:Double>
     <sys:Double x:Key="PopupWidth">262</sys:Double>
@@ -36,6 +37,10 @@
                 Value="Center" />
         <Setter Property="VerticalContentAlignment"
                 Value="Center" />
+        <Setter Property="MinWidth"
+                Value="0" />
+        <Setter Property="Width"
+                Value="{Binding ShowRowsCount, RelativeSource={RelativeSource AncestorType={x:Type control:FilterDataGrid}}, Converter={StaticResource BooleanToWidthConverter}}" />
     </Style>
     <!-- COMPACT DATAGRID CELL STYLE -->
     <Style TargetType="{x:Type DataGridCell}">
@@ -317,8 +322,6 @@
                 Value="{DynamicResource BorderBrush}" />
         <Setter Property="BorderThickness"
                 Value="1" />
-        <Setter Property="EnableRowVirtualization"
-                Value="True" />
         <Setter Property="VirtualizingPanel.IsVirtualizing"
                 Value="True" />
         <Setter Property="VirtualizingPanel.VirtualizationMode"
@@ -422,7 +425,7 @@
                                             <!-- SELECT ALL BUTTON -->
                                             <Border Grid.Row="0"
                                                     Grid.Column="0"
-                                                    Width="{Binding CellsPanelHorizontalOffset, RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}}"
+                                                    Width="{Binding ShowRowsCount, RelativeSource={RelativeSource AncestorType={x:Type control:FilterDataGrid}}, Converter={StaticResource BooleanToWidthConverter}}"
                                                     Height="22"
                                                     Padding="10"
                                                     Margin="0 0 0 -1"
@@ -1268,8 +1271,10 @@
             </Trigger>
             <MultiTrigger>
                 <MultiTrigger.Conditions>
-                    <Condition Property="Visibility" Value="Visible" />
-                    <Condition Property="IsMouseOver" Value="False" />
+                    <Condition Property="Visibility"
+                               Value="Visible" />
+                    <Condition Property="IsMouseOver"
+                               Value="False" />
                 </MultiTrigger.Conditions>
                 <Setter TargetName="HorizontalScrollBarGrid"
                         Property="Height"

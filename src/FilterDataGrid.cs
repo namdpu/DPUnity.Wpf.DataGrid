@@ -21,6 +21,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 
 namespace DPUnity.Wpf.DpDataGrid
@@ -710,6 +711,11 @@ namespace DPUnity.Wpf.DpDataGrid
                     VerticalAlignment = VerticalAlignment.Center
                 };
                 e.Row.Header = textBlock;
+            }
+            else
+            {
+                // Set empty content but maintain structure
+                e.Row.Header = new TextBlock { Text = string.Empty };
             }
         }
 
@@ -2321,10 +2327,10 @@ namespace DPUnity.Wpf.DpDataGrid
             OnPropertyChanged(nameof(ItemsSourceCount));
 
             if (!ShowRowsCount) return;
-            // Renumber all rows
+            // Renumber all rows - simple approach since width is controlled by XAML
             for (var i = 0; i < Items.Count; i++)
-                if (ItemContainerGenerator.ContainerFromIndex(i) is DataGridRow row)
-                    row.Header = $"{i + 1}";
+                if (ItemContainerGenerator.ContainerFromIndex(i) is DataGridRow row && row.Header is TextBlock textBlock)
+                    textBlock.Text = ShowRowsCount ? $"{i + 1}" : string.Empty;
         }
 
         #endregion Private Methods
