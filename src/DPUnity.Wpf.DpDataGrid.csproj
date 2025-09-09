@@ -6,7 +6,7 @@
 		<Nullable>enable</Nullable>
 		<UseWPF>true</UseWPF>
 		<ImplicitUsings>enable</ImplicitUsings>
-		<Version>1.0.13</Version>
+		<Version>1.0.14</Version>
 		<PackageId>DPUnity.Wpf.DpDataGrid</PackageId>
 		<Title>DPUnity WPF DataGrid</Title>
 		<Description>Enhanced DataGrid controls for WPF applications</Description>
@@ -16,7 +16,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="DPUnity.Wpf.UI" Version="1.0.13" />
+		<PackageReference Include="DPUnity.Wpf.UI" Version="1.0.22" />
 		<PackageReference Include="HandyControls" Version="3.6.0" />
 	</ItemGroup>
 
