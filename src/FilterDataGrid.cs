@@ -21,7 +21,6 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Input;
-using System.Windows.Media;
 using System.Windows.Threading;
 
 namespace DPUnity.Wpf.DpDataGrid
@@ -125,15 +124,6 @@ namespace DPUnity.Wpf.DpDataGrid
                 typeof(Local),
                 typeof(FilterDataGrid),
                 new PropertyMetadata(Local.English));
-
-        /// <summary>
-        ///     Show elapsed time in status bar
-        /// </summary>
-        public static readonly DependencyProperty ShowElapsedTimeProperty =
-            DependencyProperty.Register("ShowElapsedTime",
-                typeof(bool),
-                typeof(FilterDataGrid),
-                new PropertyMetadata(false));
 
         /// <summary>
         ///     Show status bar
@@ -325,15 +315,6 @@ namespace DPUnity.Wpf.DpDataGrid
         ///     Display items count
         /// </summary>
         public int ItemsSourceCount { get; set; }
-
-        /// <summary>
-        ///     Show elapsed time in status bar
-        /// </summary>
-        public bool ShowElapsedTime
-        {
-            get => (bool)GetValue(ShowElapsedTimeProperty);
-            set => SetValue(ShowElapsedTimeProperty, value);
-        }
 
         /// <summary>
         ///     Show status bar
