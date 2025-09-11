@@ -513,7 +513,8 @@
                                 <UniformGrid Columns="2"
                                              DataContext="{Binding RelativeSource={RelativeSource AncestorType={x:Type control:FilterDataGrid}}}">
                                     <!-- RESULT STATUS -->
-                                    <TextBlock HorizontalAlignment="Left">
+                                    <TextBlock HorizontalAlignment="Left"
+                                               Foreground="{DynamicResource SecondaryTextBrush}">
                                         <TextBlock.Text>
                                             <MultiBinding Converter="{StaticResource StringFormatConverter}"
                                                           ConverterParameter="Culture">
