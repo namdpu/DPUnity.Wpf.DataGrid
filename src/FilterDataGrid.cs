@@ -9,12 +9,15 @@
 
 #endregion
 
+using DPUnity.Wpf.Controls.Controls.DialogService;
+using DPUnity.Wpf.Controls.Controls.InputForms;
 using DPUnity.Wpf.DpDataGrid.Converters;
 using System.Collections;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -62,6 +65,10 @@ namespace DPUnity.Wpf.DpDataGrid
             CommandBindings.Add(new CommandBinding(RemoveAllFilters, RemoveAllFilterCommand, CanRemoveAllFilter));
             CommandBindings.Add(new CommandBinding(RemoveFilter, RemoveFilterCommand, CanRemoveFilter));
             CommandBindings.Add(new CommandBinding(ShowFilter, ShowFilterCommand, CanShowFilter));
+            _ = CommandBindings.Add(new CommandBinding(ShowFindReplace, ShowFindReplaceCommand));
+
+            // Thêm KeyBinding cho Ctrl + H
+            InputBindings.Add(new KeyBinding(ShowFindReplace, new KeyGesture(Key.H, ModifierKeys.Control)));
 
             Loaded += (s, e) => OnLoadFilterDataGrid(this, new DependencyPropertyChangedEventArgs());
 
@@ -84,6 +91,7 @@ namespace DPUnity.Wpf.DpDataGrid
         public static readonly ICommand RemoveAllFilters = new RoutedCommand();
         public static readonly ICommand RemoveFilter = new RoutedCommand();
         public static readonly ICommand ShowFilter = new RoutedCommand();
+        public static readonly ICommand ShowFindReplace = new RoutedCommand();
 
         #endregion Command
 
@@ -2290,6 +2298,118 @@ namespace DPUnity.Wpf.DpDataGrid
             {
                 Debug.WriteLine($"PopupPlacement error : {ex.Message}");
                 throw;
+            }
+        }
+
+        /// <summary>
+        ///     Show Find and Replace dialog when user presses Ctrl + H
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private async void ShowFindReplaceCommand(object sender, ExecutedRoutedEventArgs e)
+        {
+            try
+            {
+                // Kiểm tra có ít nhất 1 dòng được chọn
+                if (SelectedItems == null || SelectedItems.Count == 0)
+                {
+                    return;
+                }
+
+                List<DataGridColumn> replaceableColumns = [.. Columns.Where(c => !c.IsReadOnly && c is DataGridTextColumn && c is not DataGridNumericColumn)];
+
+                if (replaceableColumns.Count == 0)
+                {
+                    return;
+                }
+
+                var replaceOutput = await DPInput.ShowDataGridReplaceInput(Name, replaceableColumns);
+
+                int itemChangedCount = 0;
+                bool hasChanges = false;
+
+                foreach (var column in replaceOutput.Value.SelectedColumns)
+                {
+                    if (column is DataGridTextColumn textColumn)
+                    {
+                        var binding = textColumn.Binding as Binding;
+                        var fieldName = binding?.Path.Path;
+                        if (string.IsNullOrEmpty(fieldName))
+                        {
+                            continue;
+                        }
+
+                        foreach (var selectedItem in SelectedItems)
+                        {
+                            var property = selectedItem.GetType().GetProperty(fieldName);
+                            if (property != null && property.PropertyType == typeof(string) && property.CanWrite)
+                            {
+                                var currentValue = property.GetValue(selectedItem) as string ?? string.Empty;
+                                var newValue = currentValue.Replace(replaceOutput.Value.Find, replaceOutput.Value.ReplaceWith);
+
+                                if (currentValue != newValue)
+                                {
+                                    property.SetValue(selectedItem, newValue);
+                                    itemChangedCount++;
+                                    hasChanges = true;
+
+                                    if (selectedItem is INotifyPropertyChanged notifyPropertyChanged)
+                                    {
+                                        try
+                                        {
+                                            var propertyChangedField = notifyPropertyChanged.GetType()
+                                                .GetField("PropertyChanged", BindingFlags.Instance | BindingFlags.NonPublic);
+
+                                            if (propertyChangedField?.GetValue(notifyPropertyChanged) is PropertyChangedEventHandler propertyChangedEvent)
+                                            {
+                                                propertyChangedEvent.Invoke(notifyPropertyChanged, new PropertyChangedEventArgs(fieldName));
+                                            }
+                                        }
+                                        catch
+                                        {
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (hasChanges)
+                {
+                    // Use Dispatcher to ensure UI update happens on UI thread
+                    _ = Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        try
+                        {
+                            // Force refresh the collection view first
+                            CollectionViewSource?.Refresh();
+
+                            // Update layout and invalidate visual
+                            UpdateLayout();
+                            InvalidateVisual();
+
+                            // Force invalidate the visual tree to ensure all cells are refreshed
+                            foreach (var item in SelectedItems)
+                            {
+                                if (ItemContainerGenerator.ContainerFromItem(item) is DataGridRow row)
+                                {
+                                    row.InvalidateVisual();
+                                    row.UpdateLayout();
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"Error refreshing UI after replace: {ex.Message}");
+                        }
+                    }), DispatcherPriority.Render);
+                    DPDialog.Info($"Đã thực hiện {itemChangedCount} thay đổi.");
+                }
+            }
+            catch (Exception ex)
+            {
+                DPDialog.Error(ex.Message);
             }
         }
 
