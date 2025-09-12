@@ -9,17 +9,16 @@
 
 #endregion
 
+using DPUnity.Wpf.Controls.Controls.DialogService;
+using DPUnity.Wpf.Controls.Controls.InputForms;
 using DPUnity.Wpf.DpDataGrid.Converters;
-using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
-using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -66,6 +65,10 @@ namespace DPUnity.Wpf.DpDataGrid
             CommandBindings.Add(new CommandBinding(RemoveAllFilters, RemoveAllFilterCommand, CanRemoveAllFilter));
             CommandBindings.Add(new CommandBinding(RemoveFilter, RemoveFilterCommand, CanRemoveFilter));
             CommandBindings.Add(new CommandBinding(ShowFilter, ShowFilterCommand, CanShowFilter));
+            _ = CommandBindings.Add(new CommandBinding(ShowFindReplace, ShowFindReplaceCommand));
+
+            // Thêm KeyBinding cho Ctrl + H
+            InputBindings.Add(new KeyBinding(ShowFindReplace, new KeyGesture(Key.H, ModifierKeys.Control)));
 
             Loaded += (s, e) => OnLoadFilterDataGrid(this, new DependencyPropertyChangedEventArgs());
 
@@ -88,6 +91,7 @@ namespace DPUnity.Wpf.DpDataGrid
         public static readonly ICommand RemoveAllFilters = new RoutedCommand();
         public static readonly ICommand RemoveFilter = new RoutedCommand();
         public static readonly ICommand ShowFilter = new RoutedCommand();
+        public static readonly ICommand ShowFindReplace = new RoutedCommand();
 
         #endregion Command
 
@@ -128,15 +132,6 @@ namespace DPUnity.Wpf.DpDataGrid
                 typeof(Local),
                 typeof(FilterDataGrid),
                 new PropertyMetadata(Local.English));
-
-        /// <summary>
-        ///     Show elapsed time in status bar
-        /// </summary>
-        public static readonly DependencyProperty ShowElapsedTimeProperty =
-            DependencyProperty.Register("ShowElapsedTime",
-                typeof(bool),
-                typeof(FilterDataGrid),
-                new PropertyMetadata(false));
 
         /// <summary>
         ///     Show status bar
@@ -242,7 +237,7 @@ namespace DPUnity.Wpf.DpDataGrid
 
         private bool startsWith;
 
-        private readonly Dictionary<string, Predicate<object>> criteria = [];
+        private readonly Dictionary<string, Predicate<object>> criteria = new();
 
         #endregion Private Fields
 
@@ -330,15 +325,6 @@ namespace DPUnity.Wpf.DpDataGrid
         public int ItemsSourceCount { get; set; }
 
         /// <summary>
-        ///     Show elapsed time in status bar
-        /// </summary>
-        public bool ShowElapsedTime
-        {
-            get => (bool)GetValue(ShowElapsedTimeProperty);
-            set => SetValue(ShowElapsedTimeProperty, value);
-        }
-
-        /// <summary>
         ///     Show status bar
         /// </summary>
         public bool ShowStatusBar
@@ -366,7 +352,7 @@ namespace DPUnity.Wpf.DpDataGrid
         /// </summary>
         public List<FilterItemDate> TreeViewItems
         {
-            get => treeView ?? [];
+            get => treeView ?? new List<FilterItemDate>();
             set
             {
                 treeView = value;
@@ -379,7 +365,7 @@ namespace DPUnity.Wpf.DpDataGrid
         /// </summary>
         public List<FilterItem> ListBoxItems
         {
-            get => listBoxItems ?? [];
+            get => listBoxItems ?? new List<FilterItem>();
             set
             {
                 listBoxItems = value;
@@ -425,20 +411,20 @@ namespace DPUnity.Wpf.DpDataGrid
         private FilterCommon CurrentFilter { get; set; }
         private ICollectionView CollectionViewSource { get; set; }
         private ICollectionView ItemCollectionView { get; set; }
-        private List<FilterCommon> GlobalFilterList { get; } = [];
+        private List<FilterCommon> GlobalFilterList { get; } = new();
 
         /// <summary>
         /// Popup filtered items (ListBox/TreeView)
         /// </summary>
         private IEnumerable<FilterItem> PopupViewItems =>
-            ItemCollectionView?.OfType<FilterItem>().Where(c => c.Level != 0) ?? [];
+            ItemCollectionView?.OfType<FilterItem>().Where(c => c.Level != 0) ?? new List<FilterItem>();
 
         /// <summary>
         /// Popup source collection (ListBox/TreeView)
         /// </summary>
         private IEnumerable<FilterItem> SourcePopupViewItems =>
             ItemCollectionView?.SourceCollection.OfType<FilterItem>().Where(c => c.Level != 0) ??
-            [];
+            new List<FilterItem>();
 
         #endregion Private Properties
 
@@ -468,8 +454,8 @@ namespace DPUnity.Wpf.DpDataGrid
                 // fill excluded Fields list with values
                 if (AutoGenerateColumns)
                 {
-                    excludedFields = [.. ExcludeFields.Split(',').Select(p => p.Trim())];
-                    excludedColumns = [.. ExcludeColumns.Split(',').Select(p => p.Trim())];
+                    excludedFields = new List<string>(ExcludeFields.Split(',').Select(p => p.Trim()));
+                    excludedColumns = new List<string>(ExcludeColumns.Split(',').Select(p => p.Trim()));
                 }
                 // generating custom columns
                 else if (collectionType != null) GeneratingCustomsColumn();
@@ -715,6 +701,11 @@ namespace DPUnity.Wpf.DpDataGrid
                 };
                 e.Row.Header = textBlock;
             }
+            else
+            {
+                // Set empty content but maintain structure
+                e.Row.Header = new TextBlock { Text = string.Empty };
+            }
         }
 
         #endregion Protected Methods
@@ -913,7 +904,7 @@ namespace DPUnity.Wpf.DpDataGrid
                         preset.PreviouslyFilteredItems = [.. preset.PreviouslyFilteredItems.Select(o => ConvertToType(o, preset.FieldType))];
 
                         // Get the items that are always present in the source collection
-                        preset.FilteredItems = [.. sourceObjectList.Where(c => preset.PreviouslyFilteredItems.Contains(c))];
+                        preset.FilteredItems = new List<object>(sourceObjectList.Where(c => preset.PreviouslyFilteredItems.Contains(c)));
 
                         // if no items are filtered, continue to the next column
                         if (preset.FilteredItems.Count == 0)
@@ -1053,26 +1044,32 @@ namespace DPUnity.Wpf.DpDataGrid
                         Label = key.ToString(Translate.Culture),
                         Initialize = true,
                         FieldType = fieldType,
-                        Children = [.. group.GroupBy(
-                            x => ((DateTime)x.Content).Month,
-                            (monthKey, monthGroup) => new FilterItemDate
-                            {
-                                Level = 2,
-                                Content = monthKey,
-                                Label = new DateTime(key, monthKey, 1).ToString("MMMM", Translate.Culture),
-                                Initialize = true,
-                                FieldType = fieldType,
-                                Children = [.. monthGroup.Select(x => new FilterItemDate
+                        Children = new List<FilterItemDate>(
+                            group.GroupBy(
+                                x => ((DateTime)x.Content).Month,
+                                (monthKey, monthGroup) => new FilterItemDate
                                 {
-                                    Level = 3,
-                                    Content = ((DateTime)x.Content).Day,
-                                    Label = ((DateTime)x.Content).ToString("dd", Translate.Culture),
+                                    Level = 2,
+                                    Content = monthKey,
+                                    Label = new DateTime(key, monthKey, 1).ToString("MMMM", Translate.Culture),
                                     Initialize = true,
                                     FieldType = fieldType,
-                                    Item = x
-                                })]
-                            })]
-                    }).ToList();
+                                    Children = new List<FilterItemDate>(
+                                        monthGroup.Select(x => new FilterItemDate
+                                        {
+                                            Level = 3,
+                                            Content = ((DateTime)x.Content).Day,
+                                            Label = ((DateTime)x.Content).ToString("dd", Translate.Culture),
+                                            Initialize = true,
+                                            FieldType = fieldType,
+                                            Item = x
+                                        })
+                                    )
+                                }
+                            )
+                        )
+                    }
+                ).ToList();
 
                 foreach (var year in years)
                 {
@@ -2305,6 +2302,118 @@ namespace DPUnity.Wpf.DpDataGrid
         }
 
         /// <summary>
+        ///     Show Find and Replace dialog when user presses Ctrl + H
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private async void ShowFindReplaceCommand(object sender, ExecutedRoutedEventArgs e)
+        {
+            try
+            {
+                // Kiểm tra có ít nhất 1 dòng được chọn
+                if (SelectedItems == null || SelectedItems.Count == 0)
+                {
+                    return;
+                }
+
+                List<DataGridColumn> replaceableColumns = [.. Columns.Where(c => !c.IsReadOnly && c is DataGridTextColumn && c is not DataGridNumericColumn)];
+
+                if (replaceableColumns.Count == 0)
+                {
+                    return;
+                }
+
+                var replaceOutput = await DPInput.ShowDataGridReplaceInput(Name, replaceableColumns);
+
+                int itemChangedCount = 0;
+                bool hasChanges = false;
+
+                foreach (var column in replaceOutput.Value.SelectedColumns)
+                {
+                    if (column is DataGridTextColumn textColumn)
+                    {
+                        var binding = textColumn.Binding as Binding;
+                        var fieldName = binding?.Path.Path;
+                        if (string.IsNullOrEmpty(fieldName))
+                        {
+                            continue;
+                        }
+
+                        foreach (var selectedItem in SelectedItems)
+                        {
+                            var property = selectedItem.GetType().GetProperty(fieldName);
+                            if (property != null && property.PropertyType == typeof(string) && property.CanWrite)
+                            {
+                                var currentValue = property.GetValue(selectedItem) as string ?? string.Empty;
+                                var newValue = currentValue.Replace(replaceOutput.Value.Find, replaceOutput.Value.ReplaceWith);
+
+                                if (currentValue != newValue)
+                                {
+                                    property.SetValue(selectedItem, newValue);
+                                    itemChangedCount++;
+                                    hasChanges = true;
+
+                                    if (selectedItem is INotifyPropertyChanged notifyPropertyChanged)
+                                    {
+                                        try
+                                        {
+                                            var propertyChangedField = notifyPropertyChanged.GetType()
+                                                .GetField("PropertyChanged", BindingFlags.Instance | BindingFlags.NonPublic);
+
+                                            if (propertyChangedField?.GetValue(notifyPropertyChanged) is PropertyChangedEventHandler propertyChangedEvent)
+                                            {
+                                                propertyChangedEvent.Invoke(notifyPropertyChanged, new PropertyChangedEventArgs(fieldName));
+                                            }
+                                        }
+                                        catch
+                                        {
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (hasChanges)
+                {
+                    // Use Dispatcher to ensure UI update happens on UI thread
+                    _ = Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        try
+                        {
+                            // Force refresh the collection view first
+                            CollectionViewSource?.Refresh();
+
+                            // Update layout and invalidate visual
+                            UpdateLayout();
+                            InvalidateVisual();
+
+                            // Force invalidate the visual tree to ensure all cells are refreshed
+                            foreach (var item in SelectedItems)
+                            {
+                                if (ItemContainerGenerator.ContainerFromItem(item) is DataGridRow row)
+                                {
+                                    row.InvalidateVisual();
+                                    row.UpdateLayout();
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"Error refreshing UI after replace: {ex.Message}");
+                        }
+                    }), DispatcherPriority.Render);
+                    DPDialog.Info($"Đã thực hiện {itemChangedCount} thay đổi.");
+                }
+            }
+            catch (Exception ex)
+            {
+                DPDialog.Error(ex.Message);
+            }
+        }
+
+        /// <summary>
         ///     Renumber all rows when ItemsSource uses ObservableCollection
         ///     which implements INotifyCollectionChanged
         ///     Contribution : mcboothy
@@ -2319,10 +2428,10 @@ namespace DPUnity.Wpf.DpDataGrid
             OnPropertyChanged(nameof(ItemsSourceCount));
 
             if (!ShowRowsCount) return;
-            // Renumber all rows
+            // Renumber all rows - simple approach since width is controlled by XAML
             for (var i = 0; i < Items.Count; i++)
-                if (ItemContainerGenerator.ContainerFromIndex(i) is DataGridRow row)
-                    row.Header = $"{i + 1}";
+                if (ItemContainerGenerator.ContainerFromIndex(i) is DataGridRow row && row.Header is TextBlock textBlock)
+                    textBlock.Text = ShowRowsCount ? $"{i + 1}" : string.Empty;
         }
 
         #endregion Private Methods
