@@ -2591,15 +2591,20 @@ namespace DPUnity.Wpf.DpDataGrid
                         blankIsChanged.IsChecked = false;
                         blankIsChanged.IsChanged = !previousFiltered.Any(c => c != null && c.Equals(string.Empty));
 
-                        // result of the research
-                        var searchResult = PopupViewItems.Where(c => c.IsChecked).ToList();
+                        // result of the research - only items that appear in search
+                        var searchResult = PopupViewItems.ToList();
 
-                        // unchecked : all items except searchResult
-                        var uncheckedItems = SourcePopupViewItems.Except(searchResult).ToList();
-                        uncheckedItems.AddRange(searchResult.Where(c => c.IsChecked == false));
+                        // Only update items that are actually visible in search results
+                        // Items checked in search results should be removed from previousFiltered (shown)
+                        var checkedInSearch = searchResult.Where(c => c.IsChecked).ToList();
+                        previousFiltered.ExceptWith(checkedInSearch.Select(c => c.Content));
 
-                        previousFiltered.ExceptWith(searchResult.Select(c => c.Content));
-                        previousFiltered.UnionWith(uncheckedItems.Select(c => c.Content));
+                        // Items unchecked in search results should be added to previousFiltered (hidden)
+                        var uncheckedInSearch = searchResult.Where(c => !c.IsChecked).ToList();
+                        previousFiltered.UnionWith(uncheckedInSearch.Select(c => c.Content));
+
+                        // Do NOT modify the state of items that are not visible in search results
+                        // This preserves the original filter state of items not matching the search
                     }
                     else
                     {
