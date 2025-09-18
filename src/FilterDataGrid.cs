@@ -13,12 +13,15 @@ using DPUnity.Wpf.Controls.Controls.DialogService;
 using DPUnity.Wpf.Controls.Controls.InputForms;
 using DPUnity.Wpf.DpDataGrid.Converters;
 using System.Collections;
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -71,6 +74,8 @@ namespace DPUnity.Wpf.DpDataGrid
             InputBindings.Add(new KeyBinding(ShowFindReplace, new KeyGesture(Key.H, ModifierKeys.Control)));
 
             Loaded += (s, e) => OnLoadFilterDataGrid(this, new DependencyPropertyChangedEventArgs());
+            // Intercept Ctrl+A to optimize Select All on large datasets
+            PreviewKeyDown += OnFilterDataGridPreviewKeyDown;
 
         }
 
@@ -96,6 +101,41 @@ namespace DPUnity.Wpf.DpDataGrid
         #endregion Command
 
         #region Public DependencyProperty
+        /// <summary>
+        /// Threshold of item count after which Ctrl+A uses fast batched selection instead of selecting all at once.
+        /// </summary>
+        public static readonly DependencyProperty FastSelectAllThresholdProperty =
+            DependencyProperty.Register("FastSelectAllThreshold",
+                typeof(int),
+                typeof(FilterDataGrid),
+                new PropertyMetadata(5000));
+
+        /// <summary>
+        /// Batch size for fast Ctrl+A selection. Larger batches reduce overhead but may make UI less responsive.
+        /// </summary>
+        public static readonly DependencyProperty FastSelectAllBatchSizeProperty =
+            DependencyProperty.Register("FastSelectAllBatchSize",
+                typeof(int),
+                typeof(FilterDataGrid),
+                new PropertyMetadata(1000));
+
+        /// <summary>
+        /// Indicates if all filtered items are virtually selected (without setting IsSelected on individual items)
+        /// </summary>
+        public static readonly DependencyProperty IsAllSelectedProperty =
+            DependencyProperty.Register("IsAllSelected",
+                typeof(bool),
+                typeof(FilterDataGrid),
+                new PropertyMetadata(false, OnIsAllSelectedChanged));
+
+        /// <summary>
+        /// Threshold above which to use virtual selection instead of actual IsSelected property (default: 3000)
+        /// </summary>
+        public static readonly DependencyProperty VirtualSelectThresholdProperty =
+            DependencyProperty.Register("VirtualSelectThreshold",
+                typeof(int),
+                typeof(FilterDataGrid),
+                new PropertyMetadata(3000));
 
         /// <summary>
         ///     Excluded Fields (only AutoGeneratingColumn)
@@ -422,12 +462,94 @@ namespace DPUnity.Wpf.DpDataGrid
             set => SetValue(EnableReplaceProperty, value);
         }
 
+        /// <summary>
+        /// Threshold of item count after which Ctrl+A uses fast batched selection instead of selecting all at once.
+        /// Default 5000.
+        /// </summary>
+        public int FastSelectAllThreshold
+        {
+            get => (int)GetValue(FastSelectAllThresholdProperty);
+            set => SetValue(FastSelectAllThresholdProperty, value);
+        }
+
+        /// <summary>
+        /// Batch size for fast Ctrl+A selection. Default 1000.
+        /// </summary>
+        public int FastSelectAllBatchSize
+        {
+            get => (int)GetValue(FastSelectAllBatchSizeProperty);
+            set => SetValue(FastSelectAllBatchSizeProperty, value);
+        }
+
+        /// <summary>
+        /// Indicates if all filtered items are virtually selected
+        /// </summary>
+        public bool IsAllSelected
+        {
+            get => (bool)GetValue(IsAllSelectedProperty);
+            set => SetValue(IsAllSelectedProperty, value);
+        }
+
+        /// <summary>
+        /// Threshold above which to use virtual selection instead of actual IsSelected property. Default 3000.
+        /// </summary>
+        public int VirtualSelectThreshold
+        {
+            get => (int)GetValue(VirtualSelectThresholdProperty);
+            set => SetValue(VirtualSelectThresholdProperty, value);
+        }
+
+        /// <summary>
+        /// Indicates if currently in virtual selection mode
+        /// </summary>
+        public bool IsInVirtualSelectionMode => _isVirtualSelectAllMode;
+
+        /// <summary>
+        /// Indicates if sorting is currently in progress
+        /// </summary>
+        public bool IsSorting
+        {
+            get => _isSorting;
+            private set
+            {
+                if (_isSorting != value)
+                {
+                    _isSorting = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets the count of effectively selected items
+        /// </summary>
+        public int EffectiveSelectedItemsCount
+        {
+            get
+            {
+                if (_isVirtualSelectAllMode)
+                {
+                    var totalItems = CollectionViewSource?.Cast<object>().Count() ?? Items.Count;
+                    return totalItems - _virtualSelectionExceptions.Count;
+                }
+                else
+                {
+                    return SelectedItems.Count;
+                }
+            }
+        }
+
         #endregion Public Properties
 
         #region Private Properties
 
         private FilterCommon CurrentFilter { get; set; }
         private ICollectionView CollectionViewSource { get; set; }
+        
+        // Virtual selection support
+        private HashSet<object> _virtualSelectionExceptions = new HashSet<object>();
+        private bool _isVirtualSelectAllMode = false;
+        private bool _isSorting = false;
         private ICollectionView ItemCollectionView { get; set; }
         private List<FilterCommon> GlobalFilterList { get; } = new();
 
@@ -693,11 +815,49 @@ namespace DPUnity.Wpf.DpDataGrid
         /// <param name="eventArgs"></param>
         protected override void OnSorting(DataGridSortingEventArgs eventArgs)
         {
-            if (currentlyFiltering || (popup?.IsOpen ?? false)) return;
+            // Prevent multiple concurrent sorts
+            if (IsSorting || currentlyFiltering || (popup?.IsOpen ?? false)) 
+            {
+                eventArgs.Handled = true;
+                return;
+            }
 
+            IsSorting = true;
             Mouse.OverrideCursor = Cursors.Wait;
-            base.OnSorting(eventArgs);
-            Sorted?.Invoke(this, EventArgs.Empty);
+            
+            try
+            {
+                base.OnSorting(eventArgs);
+                Sorted?.Invoke(this, EventArgs.Empty);
+            }
+            finally
+            {
+                // Use async reset to ensure UI responsiveness
+                _ = ResetSortingStateAsync();
+            }
+        }
+
+        private async Task ResetSortingStateAsync()
+        {
+            try
+            {
+                // Small delay to ensure sorting operation completes
+                await Task.Delay(100);
+                
+                IsSorting = false;
+                await ResetCursorAsync();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"ResetSortingStateAsync error: {ex.Message}");
+                IsSorting = false;
+            }
+        }
+
+        private async Task ResetCursorAsync()
+        {
+            await Dispatcher.BeginInvoke(() => { Mouse.OverrideCursor = null; },
+                DispatcherPriority.ContextIdle);
         }
 
         /// <summary>
@@ -724,6 +884,39 @@ namespace DPUnity.Wpf.DpDataGrid
                 // Set empty content but maintain structure
                 e.Row.Header = new TextBlock { Text = string.Empty };
             }
+
+            // Update row selection visual for virtual selection mode
+            if (_isVirtualSelectAllMode && e.Row.DataContext != null)
+            {
+                bool shouldBeSelected = !_virtualSelectionExceptions.Contains(e.Row.DataContext);
+                // Just set the visual state, don't manipulate SelectedItems
+                e.Row.IsSelected = shouldBeSelected;
+            }
+
+            base.OnLoadingRow(e);
+        }
+
+        protected override void OnSelectionChanged(SelectionChangedEventArgs e)
+        {
+            // If in virtual selection mode and user is manually changing selection, exit virtual mode
+            if (_isVirtualSelectAllMode && !_fastSelecting)
+            {
+                Debug.WriteLine($"Exiting virtual selection mode due to manual selection change. Removed: {e.RemovedItems.Count}, Added: {e.AddedItems.Count}");
+                
+                // Exit virtual mode and use normal DataGrid selection
+                _isVirtualSelectAllMode = false;
+                IsAllSelected = false;
+                _virtualSelectionExceptions.Clear();
+                
+                // Force sync with bound collection
+                Dispatcher.BeginInvoke(new Action(async () =>
+                {
+                    await Task.Delay(10); // Let selection settle
+                    await DPUnity.Wpf.DpDataGrid.Behaviors.SelectedItemsBehavior.SyncSelectedItemsAsync(this, 0);
+                }), DispatcherPriority.Background);
+            }
+
+            base.OnSelectionChanged(e);
         }
 
         #endregion Protected Methods
@@ -786,6 +979,75 @@ namespace DPUnity.Wpf.DpDataGrid
         #endregion Public Methods
 
         #region Private Methods
+
+        private bool _fastSelecting;
+
+        private async void OnFilterDataGridPreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            try
+            {
+                if (_fastSelecting)
+                {
+                    return;
+                }
+
+                // Optimize Ctrl+A (Select All)
+                if (e.Key == Key.A && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+                {
+                    // Only optimize for multi-select and large datasets
+                    if (SelectionMode != DataGridSelectionMode.Single && Items != null && Items.Count >= FastSelectAllThreshold)
+                    {
+                        e.Handled = true;
+                        _fastSelecting = true;
+
+                        Mouse.OverrideCursor = Cursors.Wait;
+                        try
+                        {
+                            // Use virtual selection for very large datasets
+                            if (Items.Count >= VirtualSelectThreshold)
+                            {
+                                await VirtualSelectAllAsync();
+                            }
+                            else
+                            {
+                                // Suppress mirrored selection sync while DataGrid processes selection internally
+                                DPUnity.Wpf.DpDataGrid.Behaviors.SelectedItemsBehavior.SetSuppressSelectionSync(this, true);
+
+                                // Let DataGrid perform the selection
+                                await Dispatcher.BeginInvoke(new Action(() => SelectAll()), DispatcherPriority.Normal);
+
+                                // Yield to allow internal SelectedItems to settle
+                                await Dispatcher.Yield(DispatcherPriority.Background);
+
+                                // Bulk sync to bound SelectedItems (if any) in batches to keep UI responsive
+                                int batch = Math.Max(0, FastSelectAllBatchSize);
+                                await DPUnity.Wpf.DpDataGrid.Behaviors.SelectedItemsBehavior.SyncSelectedItemsAsync(this, batch);
+                            }
+                        }
+                        finally
+                        {
+                            if (Items.Count < VirtualSelectThreshold)
+                            {
+                                DPUnity.Wpf.DpDataGrid.Behaviors.SelectedItemsBehavior.SetSuppressSelectionSync(this, false);
+                            }
+                            _fastSelecting = false;
+                            ResetCursor();
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fast SelectAll error: {ex.Message}");
+            }
+            finally
+            {
+                if (!e.Handled)
+                {
+                    base.OnPreviewKeyDown(e);
+                }
+            }
+        }
 
         private void AdjustColumnWidth(DataGridColumn column)
         {
@@ -1431,6 +1693,185 @@ namespace DPUnity.Wpf.DpDataGrid
             await Dispatcher.BeginInvoke(() => { Mouse.OverrideCursor = null; },
                 DispatcherPriority.ContextIdle);
         }
+
+        #region Virtual Selection
+
+        private static void OnIsAllSelectedChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            if (d is FilterDataGrid grid)
+            {
+                grid.OnIsAllSelectedChanged((bool)e.NewValue);
+            }
+        }
+
+        private void OnIsAllSelectedChanged(bool isAllSelected)
+        {
+            if (isAllSelected)
+            {
+                _virtualSelectionExceptions.Clear();
+                _isVirtualSelectAllMode = true;
+            }
+            else
+            {
+                _virtualSelectionExceptions.Clear();
+                _isVirtualSelectAllMode = false;
+            }
+
+            // Refresh visual state of rows
+            InvalidateArrange();
+        }
+
+        private async Task VirtualSelectAllAsync()
+        {
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            try
+            {
+                Debug.WriteLine($"[VirtualSelectAll] Starting - Items.Count: {Items.Count}, Threshold: {VirtualSelectThreshold}");
+
+                // Enable virtual select all mode instantly
+                IsAllSelected = true;
+                _isVirtualSelectAllMode = true;
+                _virtualSelectionExceptions.Clear();
+
+                Debug.WriteLine($"[VirtualSelectAll] Virtual mode enabled in {stopwatch.ElapsedMilliseconds}ms");
+
+                // Don't clear SelectedItems - instead populate it with visible items for visual feedback
+                // Use a small batch to make selection appear fast but not freeze UI
+                await PopulateVisibleRowSelection();
+
+                Debug.WriteLine($"[VirtualSelectAll] Visible rows populated in {stopwatch.ElapsedMilliseconds}ms");
+
+                // Notify UI that selection changed
+                await Dispatcher.BeginInvoke(() =>
+                {
+                    OnPropertyChanged(nameof(SelectedItems));
+                    OnPropertyChanged(nameof(EffectiveSelectedItemsCount));
+                }, DispatcherPriority.Background);
+
+                Debug.WriteLine($"[VirtualSelectAll] Completed in {stopwatch.ElapsedMilliseconds}ms - EffectiveSelectedItemsCount: {EffectiveSelectedItemsCount}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"VirtualSelectAllAsync error: {ex.Message}");
+            }
+            finally
+            {
+                stopwatch.Stop();
+            }
+        }
+
+        private async Task PopulateVisibleRowSelection()
+        {
+            try
+            {
+                // Select only currently visible rows for immediate visual feedback
+                var containers = new List<DataGridRow>();
+                for (int i = 0; i < Items.Count && containers.Count < 50; i++)
+                {
+                    var container = ItemContainerGenerator.ContainerFromIndex(i) as DataGridRow;
+                    if (container != null)
+                    {
+                        containers.Add(container);
+                    }
+                }
+
+                // Select these rows in small batches
+                for (int i = 0; i < containers.Count; i += 10)
+                {
+                    for (int j = i; j < Math.Min(i + 10, containers.Count); j++)
+                    {
+                        var row = containers[j];
+                        if (row.DataContext != null && !SelectedItems.Contains(row.DataContext))
+                        {
+                            SelectedItems.Add(row.DataContext);
+                        }
+                    }
+
+                    // Yield every 10 items
+                    if (i + 10 < containers.Count)
+                    {
+                        await Task.Yield();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"PopulateVisibleRowSelection error: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Gets the effective selected items, considering virtual selection
+        /// </summary>
+        public IEnumerable GetEffectiveSelectedItems()
+        {
+            if (_isVirtualSelectAllMode)
+            {
+                // Return all filtered items except exceptions
+                var allItems = new List<object>();
+                
+                if (CollectionViewSource != null)
+                {
+                    foreach (var item in CollectionViewSource)
+                    {
+                        if (!_virtualSelectionExceptions.Contains(item))
+                        {
+                            allItems.Add(item);
+                        }
+                    }
+                }
+                else
+                {
+                    foreach (var item in Items)
+                    {
+                        if (!_virtualSelectionExceptions.Contains(item))
+                        {
+                            allItems.Add(item);
+                        }
+                    }
+                }
+                
+                return allItems;
+            }
+            else
+            {
+                return SelectedItems;
+            }
+        }
+
+        /// <summary>
+        /// Checks if an item is effectively selected, considering virtual selection
+        /// </summary>
+        public bool IsItemEffectivelySelected(object item)
+        {
+            if (_isVirtualSelectAllMode)
+            {
+                return !_virtualSelectionExceptions.Contains(item);
+            }
+            else
+            {
+                return SelectedItems.Contains(item);
+            }
+        }
+
+        /// <summary>
+        /// Clears virtual selection and returns to normal selection mode
+        /// </summary>
+        public void ClearVirtualSelection()
+        {
+            if (_isVirtualSelectAllMode)
+            {
+                _isVirtualSelectAllMode = false;
+                IsAllSelected = false;
+                _virtualSelectionExceptions.Clear();
+                SelectedItems.Clear();
+                
+                OnPropertyChanged(nameof(EffectiveSelectedItemsCount));
+                Debug.WriteLine("[VirtualSelectAll] Cleared virtual selection");
+            }
+        }
+
+        #endregion Virtual Selection
 
         /// <summary>
         ///     Can Apply filter (popup Ok button)
