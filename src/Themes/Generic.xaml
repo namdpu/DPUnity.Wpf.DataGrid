@@ -6,12 +6,14 @@
                     xmlns:icon="https://dpunity.com/dev/wpf/ui/controls/packicon"
                     xmlns:hc="https://handyorg.github.io/handycontrol"
                     xmlns:system="clr-namespace:System;assembly=mscorlib"
-                    xmlns:be="clr-namespace:DPUnity.Wpf.DpDataGrid.Behaviors">
+                    xmlns:be="clr-namespace:DPUnity.Wpf.DpDataGrid.Behaviors"
+                    xmlns:rs="clr-namespace:DPUnity.Wpf.UI.Styles;assembly=DPUnity.Wpf.UI">
     <!-- ICON -->
     <ResourceDictionary.MergedDictionaries>
         <hc:IntellisenseResources Source="/HandyControl;Component/DesignTime/DesignTimeResources.xaml" />
         <ResourceDictionary Source="/DPUnity.Wpf.DpDataGrid;component/Themes/Icons.xaml" />
         <ResourceDictionary Source="/DPUnity.Wpf.UI;component/Styles/DPUnityResources.xaml" />
+        <rs:DpuResources />
     </ResourceDictionary.MergedDictionaries>
     <SolidColorBrush x:Key="PrimaryBrush60"
                      Opacity="0.6"
@@ -454,7 +456,8 @@
                                             <DataGridColumnHeadersPresenter x:Name="PART_ColumnHeadersPresenter"
                                                                             Grid.Row="0"
                                                                             Grid.Column="1"
-                                                                            Visibility="{Binding HeadersVisibility, ConverterParameter={x:Static DataGridHeadersVisibility.Column}, Converter={x:Static DataGrid.HeadersVisibilityConverter}, RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}}" />
+                                                                            Visibility="{Binding HeadersVisibility, ConverterParameter={x:Static DataGridHeadersVisibility.Column}, Converter={x:Static DataGrid.HeadersVisibilityConverter}, RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}}" 
+                                                                            FontWeight="Bold"/>
                                             <ScrollContentPresenter x:Name="PART_ScrollContentPresenter"
                                                                     Grid.Row="1"
                                                                     Grid.Column="0"
@@ -938,6 +941,8 @@
                                                 Value="Left" />
                                         <Setter Property="VerticalContentAlignment"
                                                 Value="Center" />
+                                        <Setter Property="Foreground"
+                                                Value="{DynamicResource PrimaryTextBrush}" />
                                     </Style>
                                 </ListBox.ItemContainerStyle>
                                 <ListBox.ItemTemplate>
@@ -949,7 +954,8 @@
                                                   CommandParameter="{Binding}"
                                                   FontWeight="Normal"
                                                   IsChecked="{Binding IsChecked}"
-                                                  IsThreeState="False">
+                                                  IsThreeState="False"
+                                                  Foreground="{DynamicResource PrimaryTextBrush}">
                                             <CheckBox.Content>
                                                 <TextBlock>
                                                     <TextBlock.Text>
@@ -1007,6 +1013,7 @@
                                                       VerticalAlignment="Center"
                                                       Focusable="False"
                                                       Content="{Binding Label}"
+                                                      Foreground="{DynamicResource PrimaryTextBrush}"
                                                       IsChecked="{Binding IsChecked, UpdateSourceTrigger=PropertyChanged}" />
                                         </StackPanel>
                                         <DataTemplate.Triggers>
@@ -1032,6 +1039,8 @@
                                                 Value="Stretch" />
                                         <Setter Property="Visibility"
                                                 Value="Visible" />
+                                        <Setter Property="Foreground"
+                                                Value="{DynamicResource PrimaryTextBrush}" />
                                     </Style>
                                 </TreeView.ItemContainerStyle>
                                 <TreeView.Style>

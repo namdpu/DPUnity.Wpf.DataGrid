@@ -65,7 +65,7 @@ namespace DPUnity.Wpf.DpDataGrid
             CommandBindings.Add(new CommandBinding(RemoveAllFilters, RemoveAllFilterCommand, CanRemoveAllFilter));
             CommandBindings.Add(new CommandBinding(RemoveFilter, RemoveFilterCommand, CanRemoveFilter));
             CommandBindings.Add(new CommandBinding(ShowFilter, ShowFilterCommand, CanShowFilter));
-            _ = CommandBindings.Add(new CommandBinding(ShowFindReplace, ShowFindReplaceCommand));
+            _ = CommandBindings.Add(new CommandBinding(ShowFindReplace, ShowFindReplaceCommand, CanShowFindReplace));
 
             // Thêm KeyBinding cho Ctrl + H
             InputBindings.Add(new KeyBinding(ShowFindReplace, new KeyGesture(Key.H, ModifierKeys.Control)));
@@ -186,6 +186,15 @@ namespace DPUnity.Wpf.DpDataGrid
                 typeof(string),
                 typeof(FilterDataGrid),
                 new PropertyMetadata(string.Empty));
+
+        /// <summary>
+        ///     Enable or disable Find and Replace feature
+        /// </summary>
+        public static readonly DependencyProperty EnableReplaceProperty =
+            DependencyProperty.Register("EnableReplace",
+                typeof(bool),
+                typeof(FilterDataGrid),
+                new PropertyMetadata(false));
 
         #endregion Public DependencyProperty
 
@@ -402,6 +411,15 @@ namespace DPUnity.Wpf.DpDataGrid
         {
             get => (bool)GetValue(ShowSelectAllButtonProperty);
             set => SetValue(ShowSelectAllButtonProperty, value);
+        }
+
+        /// <summary>
+        ///     Enable or disable Find and Replace feature
+        /// </summary>
+        public bool EnableReplace
+        {
+            get => (bool)GetValue(EnableReplaceProperty);
+            set => SetValue(EnableReplaceProperty, value);
         }
 
         #endregion Public Properties
@@ -2302,6 +2320,16 @@ namespace DPUnity.Wpf.DpDataGrid
         }
 
         /// <summary>
+        ///     Check if Find and Replace command can execute
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void CanShowFindReplace(object sender, CanExecuteRoutedEventArgs e)
+        {
+            e.CanExecute = EnableReplace && SelectedItems != null && SelectedItems.Count > 0;
+        }
+
+        /// <summary>
         ///     Show Find and Replace dialog when user presses Ctrl + H
         /// </summary>
         /// <param name="sender"></param>
@@ -2310,6 +2338,12 @@ namespace DPUnity.Wpf.DpDataGrid
         {
             try
             {
+                // Kiểm tra xem tính năng Replace có được bật không
+                if (!EnableReplace)
+                {
+                    return;
+                }
+
                 // Kiểm tra có ít nhất 1 dòng được chọn
                 if (SelectedItems == null || SelectedItems.Count == 0)
                 {
