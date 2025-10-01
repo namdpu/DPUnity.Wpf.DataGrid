@@ -1,6 +1,4 @@
-﻿using System;
-using System.Globalization;
-using System.Windows;
+﻿using System.Globalization;
 using System.Windows.Data;
 using System.Windows.Media;
 
@@ -10,22 +8,23 @@ namespace DPUnity.Wpf.DpDataGrid.Converters
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
+            Brush successBrush = new SolidColorBrush(Color.FromRgb(67, 160, 71));
+            Brush warningBrush = new SolidColorBrush(Color.FromRgb(247, 144, 9));
+            Brush dangerBrush = new SolidColorBrush(Color.FromRgb(240, 68, 56));
+            Brush infoBrush = new SolidColorBrush(Color.FromRgb(21, 112, 239));
             if (value is not ItemStatus status)
-                return (Brush)Application.Current.Resources["SuccessBrush"];
+                return successBrush;
 
             if (status == ItemStatus.Error)
             {
-                var dangerBrush = Application.Current.Resources["DangerBrush"] as Brush;
-                var brush = dangerBrush?.CloneCurrentValue();
-                brush.Opacity = 10;
-                return brush;
+                return dangerBrush;
             }
 
             return status switch
             {
-                ItemStatus.Success => (Brush)Application.Current.Resources["SuccessBrush"],
-                ItemStatus.Warning => (Brush)Application.Current.Resources["WarningBrush"],
-                _ => (Brush)Application.Current.Resources["SuccessBrush"]
+                ItemStatus.Success => successBrush,
+                ItemStatus.Warning => warningBrush,
+                _ => successBrush
             };
         }
 
