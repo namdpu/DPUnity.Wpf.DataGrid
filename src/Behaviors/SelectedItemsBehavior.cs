@@ -1,13 +1,6 @@
 ﻿using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Threading.Tasks;
 
 using SystemDataGrid = System.Windows.Controls.DataGrid;
 
@@ -107,7 +100,7 @@ namespace DPUnity.Wpf.DpDataGrid.Behaviors
             selectedItems.Clear();
 
             List<object> items;
-            
+
             // Check if this is a FilterDataGrid with virtual selection
             if (dataGrid is FilterDataGrid filterGrid && filterGrid.IsInVirtualSelectionMode)
             {

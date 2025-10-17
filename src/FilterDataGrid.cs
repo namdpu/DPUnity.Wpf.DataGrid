@@ -13,15 +13,12 @@ using DPUnity.Wpf.Controls.Controls.DialogService;
 using DPUnity.Wpf.Controls.Controls.InputForms;
 using DPUnity.Wpf.DpDataGrid.Converters;
 using System.Collections;
-using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
-using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -502,7 +499,7 @@ namespace DPUnity.Wpf.DpDataGrid
         /// <summary>
         /// Indicates if currently in virtual selection mode
         /// </summary>
-        public bool IsInVirtualSelectionMode => _isVirtualSelectAllMode;
+        public bool IsInVirtualSelectionMode { get; private set; } = false;
 
         /// <summary>
         /// Indicates if sorting is currently in progress
@@ -527,7 +524,7 @@ namespace DPUnity.Wpf.DpDataGrid
         {
             get
             {
-                if (_isVirtualSelectAllMode)
+                if (IsInVirtualSelectionMode)
                 {
                     var totalItems = CollectionViewSource?.Cast<object>().Count() ?? Items.Count;
                     return totalItems - _virtualSelectionExceptions.Count;
@@ -545,10 +542,9 @@ namespace DPUnity.Wpf.DpDataGrid
 
         private FilterCommon CurrentFilter { get; set; }
         private ICollectionView CollectionViewSource { get; set; }
-        
+
         // Virtual selection support
         private HashSet<object> _virtualSelectionExceptions = new HashSet<object>();
-        private bool _isVirtualSelectAllMode = false;
         private bool _isSorting = false;
         private ICollectionView ItemCollectionView { get; set; }
         private List<FilterCommon> GlobalFilterList { get; } = new();
@@ -816,7 +812,7 @@ namespace DPUnity.Wpf.DpDataGrid
         protected override void OnSorting(DataGridSortingEventArgs eventArgs)
         {
             // Prevent multiple concurrent sorts
-            if (IsSorting || currentlyFiltering || (popup?.IsOpen ?? false)) 
+            if (IsSorting || currentlyFiltering || (popup?.IsOpen ?? false))
             {
                 eventArgs.Handled = true;
                 return;
@@ -824,10 +820,53 @@ namespace DPUnity.Wpf.DpDataGrid
 
             IsSorting = true;
             Mouse.OverrideCursor = Cursors.Wait;
-            
+
             try
             {
-                base.OnSorting(eventArgs);
+                // Get the column being sorted
+                var column = eventArgs.Column;
+                
+                // Check if we can apply custom sorting
+                if (CollectionViewSource != null && column is DataGridBoundColumn boundColumn)
+                {
+                    eventArgs.Handled = true;
+                    
+                    // Get the property path for sorting
+                    var sortPropertyName = column.SortMemberPath;
+                    if (string.IsNullOrEmpty(sortPropertyName) && boundColumn.Binding is Binding binding)
+                    {
+                        sortPropertyName = binding.Path.Path;
+                    }
+
+                    if (!string.IsNullOrEmpty(sortPropertyName))
+                    {
+                        // Determine sort direction
+                        var direction = column.SortDirection != ListSortDirection.Ascending
+                            ? ListSortDirection.Ascending
+                            : ListSortDirection.Descending;
+
+                        // Apply custom sorting with natural number ordering
+                        ApplyNaturalSort(sortPropertyName, direction);
+                        
+                        // Update column sort direction
+                        column.SortDirection = direction;
+                        
+                        // Remove sort direction from other columns
+                        foreach (var col in Columns)
+                        {
+                            if (col != column)
+                            {
+                                col.SortDirection = null;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    // Use default sorting for columns that don't support custom sorting
+                    base.OnSorting(eventArgs);
+                }
+                
                 Sorted?.Invoke(this, EventArgs.Empty);
             }
             finally
@@ -837,13 +876,117 @@ namespace DPUnity.Wpf.DpDataGrid
             }
         }
 
+        /// <summary>
+        ///     Apply natural sort with numeric extraction
+        /// </summary>
+        /// <param name="propertyName">Property name to sort by</param>
+        /// <param name="direction">Sort direction</param>
+        private void ApplyNaturalSort(string propertyName, ListSortDirection direction)
+        {
+            try
+            {
+                if (CollectionViewSource == null) return;
+
+                // Clear existing sort descriptions
+                CollectionViewSource.SortDescriptions.Clear();
+
+                // Create a custom comparer for natural sorting
+                var comparer = new NaturalSortComparer(propertyName, direction);
+                
+                // Use LiveShaping if available for better performance
+                if (CollectionViewSource is ICollectionViewLiveShaping liveShaping && liveShaping.CanChangeLiveSorting)
+                {
+                    liveShaping.LiveSortingProperties.Clear();
+                    liveShaping.LiveSortingProperties.Add(propertyName);
+                    liveShaping.IsLiveSorting = true;
+                }
+
+                // Apply custom sorting
+                if (CollectionViewSource is ListCollectionView listView)
+                {
+                    listView.CustomSort = comparer;
+                }
+                else
+                {
+                    // Fallback to standard sort description
+                    CollectionViewSource.SortDescriptions.Add(new SortDescription(propertyName, direction));
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"ApplyNaturalSort error: {ex.Message}");
+                // Fallback to simple sort
+                CollectionViewSource?.SortDescriptions.Add(new SortDescription(propertyName, direction));
+            }
+        }
+
+        /// <summary>
+        ///     Natural sort comparer that handles numeric values in strings
+        /// </summary>
+        private class NaturalSortComparer : IComparer
+        {
+            private readonly string _propertyName;
+            private readonly ListSortDirection _direction;
+
+            public NaturalSortComparer(string propertyName, ListSortDirection direction)
+            {
+                _propertyName = propertyName;
+                _direction = direction;
+            }
+
+            public int Compare(object? x, object? y)
+            {
+                try
+                {
+                    if (x == null && y == null) return 0;
+                    if (x == null) return _direction == ListSortDirection.Ascending ? -1 : 1;
+                    if (y == null) return _direction == ListSortDirection.Ascending ? 1 : -1;
+
+                    // Get property values
+                    var xValue = x.GetPropertyValue(_propertyName);
+                    var yValue = y.GetPropertyValue(_propertyName);
+
+                    if (xValue == null && yValue == null) return 0;
+                    if (xValue == null) return _direction == ListSortDirection.Ascending ? -1 : 1;
+                    if (yValue == null) return _direction == ListSortDirection.Ascending ? 1 : -1;
+
+                    // Convert to strings for comparison
+                    var xString = xValue.ToString() ?? string.Empty;
+                    var yString = yValue.ToString() ?? string.Empty;
+
+                    // Try to extract numbers from the strings
+                    var xNumber = Helpers.ExtractNumberFromName(xString);
+                    var yNumber = Helpers.ExtractNumberFromName(yString);
+
+                    // If both have numbers, compare numerically first
+                    if (xNumber != 0 || yNumber != 0)
+                    {
+                        var numericComparison = xNumber.CompareTo(yNumber);
+                        if (numericComparison != 0)
+                        {
+                            return _direction == ListSortDirection.Ascending ? numericComparison : -numericComparison;
+                        }
+                    }
+
+                    // If numbers are equal or both zero, compare strings
+                    var stringComparison = string.Compare(xString, yString, StringComparison.CurrentCultureIgnoreCase);
+                    return _direction == ListSortDirection.Ascending ? stringComparison : -stringComparison;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"NaturalSortComparer.Compare error: {ex.Message}");
+                    return 0;
+                }
+            }
+        }
+
         private async Task ResetSortingStateAsync()
         {
             try
             {
                 // Small delay to ensure sorting operation completes
                 await Task.Delay(100);
-                
+
                 IsSorting = false;
                 await ResetCursorAsync();
             }
@@ -886,7 +1029,7 @@ namespace DPUnity.Wpf.DpDataGrid
             }
 
             // Update row selection visual for virtual selection mode
-            if (_isVirtualSelectAllMode && e.Row.DataContext != null)
+            if (IsInVirtualSelectionMode && e.Row.DataContext != null)
             {
                 bool shouldBeSelected = !_virtualSelectionExceptions.Contains(e.Row.DataContext);
                 // Just set the visual state, don't manipulate SelectedItems
@@ -899,15 +1042,15 @@ namespace DPUnity.Wpf.DpDataGrid
         protected override void OnSelectionChanged(SelectionChangedEventArgs e)
         {
             // If in virtual selection mode and user is manually changing selection, exit virtual mode
-            if (_isVirtualSelectAllMode && !_fastSelecting)
+            if (IsInVirtualSelectionMode && !_fastSelecting)
             {
                 Debug.WriteLine($"Exiting virtual selection mode due to manual selection change. Removed: {e.RemovedItems.Count}, Added: {e.AddedItems.Count}");
-                
+
                 // Exit virtual mode and use normal DataGrid selection
-                _isVirtualSelectAllMode = false;
+                IsInVirtualSelectionMode = false;
                 IsAllSelected = false;
                 _virtualSelectionExceptions.Clear();
-                
+
                 // Force sync with bound collection
                 Dispatcher.BeginInvoke(new Action(async () =>
                 {
@@ -1709,12 +1852,12 @@ namespace DPUnity.Wpf.DpDataGrid
             if (isAllSelected)
             {
                 _virtualSelectionExceptions.Clear();
-                _isVirtualSelectAllMode = true;
+                IsInVirtualSelectionMode = true;
             }
             else
             {
                 _virtualSelectionExceptions.Clear();
-                _isVirtualSelectAllMode = false;
+                IsInVirtualSelectionMode = false;
             }
 
             // Refresh visual state of rows
@@ -1730,7 +1873,7 @@ namespace DPUnity.Wpf.DpDataGrid
 
                 // Enable virtual select all mode instantly
                 IsAllSelected = true;
-                _isVirtualSelectAllMode = true;
+                IsInVirtualSelectionMode = true;
                 _virtualSelectionExceptions.Clear();
 
                 Debug.WriteLine($"[VirtualSelectAll] Virtual mode enabled in {stopwatch.ElapsedMilliseconds}ms");
@@ -1768,8 +1911,7 @@ namespace DPUnity.Wpf.DpDataGrid
                 var containers = new List<DataGridRow>();
                 for (int i = 0; i < Items.Count && containers.Count < 50; i++)
                 {
-                    var container = ItemContainerGenerator.ContainerFromIndex(i) as DataGridRow;
-                    if (container != null)
+                    if (ItemContainerGenerator.ContainerFromIndex(i) is DataGridRow container)
                     {
                         containers.Add(container);
                     }
@@ -1805,11 +1947,11 @@ namespace DPUnity.Wpf.DpDataGrid
         /// </summary>
         public IEnumerable GetEffectiveSelectedItems()
         {
-            if (_isVirtualSelectAllMode)
+            if (IsInVirtualSelectionMode)
             {
                 // Return all filtered items except exceptions
                 var allItems = new List<object>();
-                
+
                 if (CollectionViewSource != null)
                 {
                     foreach (var item in CollectionViewSource)
@@ -1830,7 +1972,7 @@ namespace DPUnity.Wpf.DpDataGrid
                         }
                     }
                 }
-                
+
                 return allItems;
             }
             else
@@ -1844,7 +1986,7 @@ namespace DPUnity.Wpf.DpDataGrid
         /// </summary>
         public bool IsItemEffectivelySelected(object item)
         {
-            if (_isVirtualSelectAllMode)
+            if (IsInVirtualSelectionMode)
             {
                 return !_virtualSelectionExceptions.Contains(item);
             }
@@ -1859,13 +2001,13 @@ namespace DPUnity.Wpf.DpDataGrid
         /// </summary>
         public void ClearVirtualSelection()
         {
-            if (_isVirtualSelectAllMode)
+            if (IsInVirtualSelectionMode)
             {
-                _isVirtualSelectAllMode = false;
+                IsInVirtualSelectionMode = false;
                 IsAllSelected = false;
                 _virtualSelectionExceptions.Clear();
                 SelectedItems.Clear();
-                
+
                 OnPropertyChanged(nameof(EffectiveSelectedItemsCount));
                 Debug.WriteLine("[VirtualSelectAll] Cleared virtual selection");
             }

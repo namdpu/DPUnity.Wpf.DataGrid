@@ -9,12 +9,9 @@
 
 #endregion (c) 2019 Gilles Macabies All right reserved
 
-using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
@@ -144,9 +141,9 @@ namespace DPUnity.Wpf.DpDataGrid
     {
         #region Public Methods
 
-        public static bool IsSystemType(this Type type) => type.Assembly == typeof(object).Assembly;
+        public static bool IsSystemType(this Type type) => type?.Assembly == typeof(object).Assembly;
 
-        public static object GetPropertyValue(this object obj, string propertyName)
+        public static object? GetPropertyValue(this object? obj, string propertyName)
         {
             if (obj == null) throw new ArgumentException("Value cannot be null.", nameof(obj));
             if (propertyName == null) throw new ArgumentException("Value cannot be null.", nameof(propertyName));
@@ -156,7 +153,7 @@ namespace DPUnity.Wpf.DpDataGrid
             return obj;
         }
 
-        public static T GetPropertyValue<T>(this object obj, string propertyName)
+        public static T? GetPropertyValue<T>(this object? obj, string propertyName)
         {
             foreach (var prop in propertyName.Split('.').Select(s => obj?.GetType().GetProperty(s)))
                 obj = prop?.GetValue(obj, null);
@@ -200,6 +197,37 @@ namespace DPUnity.Wpf.DpDataGrid
         {
             var span = DateTime.Now - start;
             Debug.WriteLine($"{label,-20}{span:mm\\:ss\\.ff}");
+        }
+
+        /// <summary>
+        ///     Extract number from string for natural sorting
+        ///     Example: "Item 19" returns 19, "19" returns 19, "abc" returns 0
+        /// </summary>
+        /// <param name="text">The text to extract number from</param>
+        /// <returns>The extracted number or 0 if no number found</returns>
+        public static int ExtractNumberFromName(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return 0;
+
+            var numberString = new StringBuilder();
+            var foundDigit = false;
+
+            foreach (var c in text)
+            {
+                if (char.IsDigit(c))
+                {
+                    numberString.Append(c);
+                    foundDigit = true;
+                }
+                else if (foundDigit)
+                {
+                    // Stop after finding the first number sequence
+                    break;
+                }
+            }
+
+            return foundDigit && int.TryParse(numberString.ToString(), out var result) ? result : 0;
         }
 
         #endregion Public Methods
