@@ -686,6 +686,117 @@ namespace DPUnity.Wpf.DpDataGrid
         #endregion GenerateElement
     }
 
+    public sealed class DataGridMessageColumn : System.Windows.Controls.DataGridBoundColumn
+    {
+        #region Public Fields
+        /// <summary>
+        /// FieldName Dependency Property.
+        /// </summary>
+        public static readonly DependencyProperty FieldNameProperty =
+            DependencyProperty.Register(nameof(FieldName), typeof(string), typeof(DataGridMessageColumn),
+                new PropertyMetadata(""));
+
+        /// <summary>
+        /// IsColumnFiltered Dependency Property.
+        /// </summary>
+        public static readonly DependencyProperty IsColumnFilteredProperty =
+            DependencyProperty.Register(nameof(IsColumnFiltered), typeof(bool), typeof(DataGridMessageColumn),
+                new PropertyMetadata(false));
+
+        /// <summary>
+        /// StatusPropertyName Dependency Property - name of the Status property to bind color to
+        /// </summary>
+        public static readonly DependencyProperty StatusPropertyNameProperty =
+            DependencyProperty.Register(nameof(StatusPropertyName), typeof(string), typeof(DataGridMessageColumn),
+                new PropertyMetadata("Status"));
+        #endregion Public Fields
+
+        #region Public Properties
+        public string FieldName
+        {
+            get => (string)GetValue(FieldNameProperty);
+            set => SetValue(FieldNameProperty, value);
+        }
+
+        public bool IsColumnFiltered
+        {
+            get => (bool)GetValue(IsColumnFilteredProperty);
+            set => SetValue(IsColumnFilteredProperty, value);
+        }
+
+        public string StatusPropertyName
+        {
+            get => (string)GetValue(StatusPropertyNameProperty);
+            set => SetValue(StatusPropertyNameProperty, value);
+        }
+        #endregion Public Properties
+
+        #region GenerateElement
+        protected override FrameworkElement GenerateElement(DataGridCell cell, object dataItem)
+        {
+            var textBlock = new TextBlock
+            {
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(5, 0, 5, 0)
+            };
+
+            // Binding for text content
+            if (Binding is Binding baseBinding)
+            {
+                var textBinding = new Binding(baseBinding.Path.Path)
+                {
+                    Mode = BindingMode.OneWay
+                };
+                textBlock.SetBinding(TextBlock.TextProperty, textBinding);
+
+                // Binding for foreground color based on Status
+                var colorBinding = new Binding(StatusPropertyName)
+                {
+                    Converter = new ItemStatusToBrushConverter(),
+                    Mode = BindingMode.OneWay
+                };
+                textBlock.SetBinding(TextBlock.ForegroundProperty, colorBinding);
+            }
+
+            textBlock.SetResourceReference(FrameworkElement.StyleProperty, "DP_TextblockBase");
+
+            return textBlock;
+        }
+
+        protected override FrameworkElement GenerateEditingElement(DataGridCell cell, object dataItem)
+        {
+            var textBox = new TextBox
+            {
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(5, 0, 5, 0)
+            };
+
+            // Binding for text content
+            if (Binding is Binding baseBinding)
+            {
+                var textBinding = new Binding(baseBinding.Path.Path)
+                {
+                    Mode = BindingMode.TwoWay,
+                    UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
+                };
+                textBox.SetBinding(TextBox.TextProperty, textBinding);
+
+                // Binding for foreground color based on Status
+                var colorBinding = new Binding(StatusPropertyName)
+                {
+                    Converter = new ItemStatusToBrushConverter(),
+                    Mode = BindingMode.OneWay
+                };
+                textBox.SetBinding(TextBox.ForegroundProperty, colorBinding);
+            }
+
+            textBox.SetResourceReference(FrameworkElement.StyleProperty, "TextBox.Small");
+
+            return textBox;
+        }
+        #endregion GenerateElement
+    }
+
     public enum ItemStatus
     {
         None, Success, Warning, Error
