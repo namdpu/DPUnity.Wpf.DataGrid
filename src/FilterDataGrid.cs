@@ -283,7 +283,7 @@ namespace DPUnity.Wpf.DpDataGrid
 
         private bool startsWith;
 
-        private readonly Dictionary<string, Predicate<object>> criteria = new();
+        private readonly Dictionary<string, Predicate<object>> criteria = [];
 
         #endregion Private Fields
 
@@ -398,7 +398,7 @@ namespace DPUnity.Wpf.DpDataGrid
         /// </summary>
         public List<FilterItemDate> TreeViewItems
         {
-            get => treeView ?? new List<FilterItemDate>();
+            get => treeView ?? [];
             set
             {
                 treeView = value;
@@ -411,7 +411,7 @@ namespace DPUnity.Wpf.DpDataGrid
         /// </summary>
         public List<FilterItem> ListBoxItems
         {
-            get => listBoxItems ?? new List<FilterItem>();
+            get => listBoxItems ?? [];
             set
             {
                 listBoxItems = value;
@@ -544,23 +544,23 @@ namespace DPUnity.Wpf.DpDataGrid
         private ICollectionView CollectionViewSource { get; set; }
 
         // Virtual selection support
-        private HashSet<object> _virtualSelectionExceptions = new HashSet<object>();
+        private HashSet<object> _virtualSelectionExceptions = [];
         private bool _isSorting = false;
         private ICollectionView ItemCollectionView { get; set; }
-        private List<FilterCommon> GlobalFilterList { get; } = new();
+        private List<FilterCommon> GlobalFilterList { get; } = [];
 
         /// <summary>
         /// Popup filtered items (ListBox/TreeView)
         /// </summary>
         private IEnumerable<FilterItem> PopupViewItems =>
-            ItemCollectionView?.OfType<FilterItem>().Where(c => c.Level != 0) ?? new List<FilterItem>();
+            ItemCollectionView?.OfType<FilterItem>().Where(c => c.Level != 0) ?? [];
 
         /// <summary>
         /// Popup source collection (ListBox/TreeView)
         /// </summary>
         private IEnumerable<FilterItem> SourcePopupViewItems =>
             ItemCollectionView?.SourceCollection.OfType<FilterItem>().Where(c => c.Level != 0) ??
-            new List<FilterItem>();
+            [];
 
         #endregion Private Properties
 
@@ -590,8 +590,8 @@ namespace DPUnity.Wpf.DpDataGrid
                 // fill excluded Fields list with values
                 if (AutoGenerateColumns)
                 {
-                    excludedFields = new List<string>(ExcludeFields.Split(',').Select(p => p.Trim()));
-                    excludedColumns = new List<string>(ExcludeColumns.Split(',').Select(p => p.Trim()));
+                    excludedFields = [.. ExcludeFields.Split(',').Select(p => p.Trim())];
+                    excludedColumns = [.. ExcludeColumns.Split(',').Select(p => p.Trim())];
                 }
                 // generating custom columns
                 else if (collectionType != null) GeneratingCustomsColumn();
@@ -825,12 +825,12 @@ namespace DPUnity.Wpf.DpDataGrid
             {
                 // Get the column being sorted
                 var column = eventArgs.Column;
-                
+
                 // Check if we can apply custom sorting
                 if (CollectionViewSource != null && column is DataGridBoundColumn boundColumn)
                 {
                     eventArgs.Handled = true;
-                    
+
                     // Get the property path for sorting
                     var sortPropertyName = column.SortMemberPath;
                     if (string.IsNullOrEmpty(sortPropertyName) && boundColumn.Binding is Binding binding)
@@ -847,10 +847,10 @@ namespace DPUnity.Wpf.DpDataGrid
 
                         // Apply custom sorting with natural number ordering
                         ApplyNaturalSort(sortPropertyName, direction);
-                        
+
                         // Update column sort direction
                         column.SortDirection = direction;
-                        
+
                         // Remove sort direction from other columns
                         foreach (var col in Columns)
                         {
@@ -866,7 +866,7 @@ namespace DPUnity.Wpf.DpDataGrid
                     // Use default sorting for columns that don't support custom sorting
                     base.OnSorting(eventArgs);
                 }
-                
+
                 Sorted?.Invoke(this, EventArgs.Empty);
             }
             finally
@@ -892,7 +892,7 @@ namespace DPUnity.Wpf.DpDataGrid
 
                 // Create a custom comparer for natural sorting
                 var comparer = new NaturalSortComparer(propertyName, direction);
-                
+
                 // Use LiveShaping if available for better performance
                 if (CollectionViewSource is ICollectionViewLiveShaping liveShaping && liveShaping.CanChangeLiveSorting)
                 {
@@ -1327,7 +1327,7 @@ namespace DPUnity.Wpf.DpDataGrid
                         preset.PreviouslyFilteredItems = [.. preset.PreviouslyFilteredItems.Select(o => ConvertToType(o, preset.FieldType))];
 
                         // Get the items that are always present in the source collection
-                        preset.FilteredItems = new List<object>(sourceObjectList.Where(c => preset.PreviouslyFilteredItems.Contains(c)));
+                        preset.FilteredItems = [.. sourceObjectList.Where(c => preset.PreviouslyFilteredItems.Contains(c))];
 
                         // if no items are filtered, continue to the next column
                         if (preset.FilteredItems.Count == 0)
@@ -1467,8 +1467,7 @@ namespace DPUnity.Wpf.DpDataGrid
                         Label = key.ToString(Translate.Culture),
                         Initialize = true,
                         FieldType = fieldType,
-                        Children = new List<FilterItemDate>(
-                            group.GroupBy(
+                        Children = [.. group.GroupBy(
                                 x => ((DateTime)x.Content).Month,
                                 (monthKey, monthGroup) => new FilterItemDate
                                 {
@@ -1477,20 +1476,17 @@ namespace DPUnity.Wpf.DpDataGrid
                                     Label = new DateTime(key, monthKey, 1).ToString("MMMM", Translate.Culture),
                                     Initialize = true,
                                     FieldType = fieldType,
-                                    Children = new List<FilterItemDate>(
-                                        monthGroup.Select(x => new FilterItemDate
-                                        {
-                                            Level = 3,
-                                            Content = ((DateTime)x.Content).Day,
-                                            Label = ((DateTime)x.Content).ToString("dd", Translate.Culture),
-                                            Initialize = true,
-                                            FieldType = fieldType,
-                                            Item = x
-                                        })
-                                    )
+                                    Children = [.. monthGroup.Select(x => new FilterItemDate
+                                    {
+                                        Level = 3,
+                                        Content = ((DateTime)x.Content).Day,
+                                        Label = ((DateTime)x.Content).ToString("dd", Translate.Culture),
+                                        Initialize = true,
+                                        FieldType = fieldType,
+                                        Item = x
+                                    })]
                                 }
-                            )
-                        )
+                            )]
                     }
                 ).ToList();
 
@@ -2573,20 +2569,37 @@ namespace DPUnity.Wpf.DpDataGrid
 
                     string GetLabel(object o, Type type)
                     {
-                        // retrieve the label of the list previously reconstituted from "ItemsSource" of the combobox
-                        if (comboxColumn?.IsSingle == true)
-                        {
-                            return comboxColumn.ComboBoxItemsSource
-                                ?.FirstOrDefault(x => x.SelectedValue == o.ToString())?.DisplayMember;
-                        }
-
                         if (comboxColumn != null)
                         {
+                            // Try to get ItemsSource directly (handles both binding and static resources like proxy)
+                            var items = comboxColumn.ItemsSource;
+
+                            if (items != null &&
+                                string.IsNullOrEmpty(comboxColumn.DisplayMemberPath) &&
+                                string.IsNullOrEmpty(comboxColumn.SelectedValuePath))
+                            {
+                                // Simple collection where items are the values themselves
+                                foreach (var item in items)
+                                {
+                                    if (item != null && item.Equals(o))
+                                    {
+                                        return item.ToString();
+                                    }
+                                }
+                            }
+
+                            // retrieve the label of the list previously reconstituted from "ItemsSource" of the combobox
+                            if (comboxColumn.IsSingle == true)
+                            {
+                                return comboxColumn.ComboBoxItemsSource
+                                    ?.FirstOrDefault(x => x.SelectedValue == o.ToString())?.DisplayMember;
+                            }
+
                             var itemsSourceBinding = BindingOperations.GetBinding(comboxColumn, System.Windows.Controls.DataGridComboBoxColumn.ItemsSourceProperty);
                             bool isUsingEnumConverter = itemsSourceBinding?.Converter is EnumToKeyValueListConverter;
+
                             if (isUsingEnumConverter) // If using EnumToKeyValueListConverter => use description as field name
                             {
-                                var items = comboxColumn.ItemsSource;
                                 if (items != null)
                                 {
                                     // Try to find a matching key-value pair where the key matches our value
@@ -2607,6 +2620,42 @@ namespace DPUnity.Wpf.DpDataGrid
                                                     return valueProperty.GetValue(item)?.ToString();
                                                 }
                                             }
+                                        }
+                                    }
+                                }
+                            }
+                            // Handle ItemsSource collections with DisplayMemberPath (including proxy bindings)
+                            else if (items != null && !string.IsNullOrEmpty(comboxColumn.DisplayMemberPath))
+                            {
+                                // Try to find display value from ItemsSource using DisplayMemberPath
+                                foreach (var item in items)
+                                {
+                                    // Get the value that should match (SelectedValuePath or the item itself)
+                                    var valueToMatch = o;
+                                    if (!string.IsNullOrEmpty(comboxColumn.SelectedValuePath))
+                                    {
+                                        var valueProperty = item.GetType().GetProperty(comboxColumn.SelectedValuePath);
+                                        if (valueProperty != null)
+                                        {
+                                            var itemValue = valueProperty.GetValue(item);
+                                            if (itemValue != null && itemValue.Equals(valueToMatch))
+                                            {
+                                                // Found matching item, get display value
+                                                var displayProperty = item.GetType().GetProperty(comboxColumn.DisplayMemberPath);
+                                                if (displayProperty != null)
+                                                {
+                                                    return displayProperty.GetValue(item)?.ToString();
+                                                }
+                                            }
+                                        }
+                                    }
+                                    else if (item.Equals(valueToMatch))
+                                    {
+                                        // No SelectedValuePath, item itself is the value
+                                        var displayProperty = item.GetType().GetProperty(comboxColumn.DisplayMemberPath);
+                                        if (displayProperty != null)
+                                        {
+                                            return displayProperty.GetValue(item)?.ToString();
                                         }
                                     }
                                 }
