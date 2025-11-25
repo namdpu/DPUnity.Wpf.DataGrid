@@ -6,7 +6,6 @@ on:
       - nuget
 
 env:
-  DISCORD_WEBHOOK: https://discordapp.com/api/webhooks/1402490419530432665/hFcn7hExzZ20MgLpbmGjdF4cwu3YpB5z4k5G01484Jouwl9GNWMxcJi-pYJZjexLFMch
   DOTNET_VERSION: '8.0.x'
   PROJECT_FILE: 'DPUnity.Wpf.DpDataGrid'
   PROJECT_PATH: './src/DPUnity.Wpf.DpDataGrid.csproj'
