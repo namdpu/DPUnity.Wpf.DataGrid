@@ -6,12 +6,14 @@
                     xmlns:icon="https://dpunity.com/dev/wpf/ui/controls/packicon"
                     xmlns:hc="https://handyorg.github.io/handycontrol"
                     xmlns:system="clr-namespace:System;assembly=mscorlib"
-                    xmlns:be="clr-namespace:DPUnity.Wpf.DpDataGrid.Behaviors">
+                    xmlns:be="clr-namespace:DPUnity.Wpf.DpDataGrid.Behaviors"
+                    xmlns:rs="clr-namespace:DPUnity.Wpf.UI.Styles;assembly=DPUnity.Wpf.UI">
     <!-- ICON -->
     <ResourceDictionary.MergedDictionaries>
         <hc:IntellisenseResources Source="/HandyControl;Component/DesignTime/DesignTimeResources.xaml" />
         <ResourceDictionary Source="/DPUnity.Wpf.DpDataGrid;component/Themes/Icons.xaml" />
         <ResourceDictionary Source="/DPUnity.Wpf.UI;component/Styles/DPUnityResources.xaml" />
+        <rs:DpuResources />
     </ResourceDictionary.MergedDictionaries>
     <SolidColorBrush x:Key="PrimaryBrush60"
                      Opacity="0.6"
@@ -151,7 +153,7 @@
                         <!-- Col:1 BUTTON CLEAR FILTER -->
                         <Button x:Name="ClearSearchBoxBtn"
                                 Grid.Column="1"
-                                Margin="2"
+                                Margin="4 2 0 0"
                                 Background="Transparent"
                                 Command="{x:Static control:FilterDataGrid.ClearSearchBox}"
                                 Focusable="False">
@@ -375,7 +377,7 @@
                                                     Grid.Column="2"
                                                     Width="30"
                                                     Height="22"
-                                                    Margin="-5 0 0 0"
+                                                    Margin="0 0 0 0"
                                                     Padding="0"
                                                     BorderThickness="0"
                                                     Background="Transparent"
@@ -454,7 +456,8 @@
                                             <DataGridColumnHeadersPresenter x:Name="PART_ColumnHeadersPresenter"
                                                                             Grid.Row="0"
                                                                             Grid.Column="1"
-                                                                            Visibility="{Binding HeadersVisibility, ConverterParameter={x:Static DataGridHeadersVisibility.Column}, Converter={x:Static DataGrid.HeadersVisibilityConverter}, RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}}" />
+                                                                            Visibility="{Binding HeadersVisibility, ConverterParameter={x:Static DataGridHeadersVisibility.Column}, Converter={x:Static DataGrid.HeadersVisibilityConverter}, RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}}" 
+                                                                            FontWeight="Bold"/>
                                             <ScrollContentPresenter x:Name="PART_ScrollContentPresenter"
                                                                     Grid.Row="1"
                                                                     Grid.Column="0"
@@ -591,9 +594,9 @@
                                             <Grid>
                                                 <icon:PackIcon x:Name="SortIcon"
                                                                Foreground="{DynamicResource PrimaryBrush}"
-                                                               Height="15"
-                                                               Width="15"
-                                                               Margin="0 0 0 -2" />
+                                                               Height="14"
+                                                               Width="14"
+                                                               Margin="0" />
                                             </Grid>
                                             <ControlTemplate.Triggers>
                                                 <DataTrigger Binding="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type DataGridColumnHeader}}, Path=SortDirection}"
@@ -657,8 +660,8 @@
                 UseLayoutRounding="True">
             <icon:PackIcon x:Name="Icon"
                            Kind="KeyboardArrowDown"
-                           Height="14"
-                           Width="14"
+                           Height="12"
+                           Width="12"
                            Margin="0 0 0 5"
                            Foreground="{DynamicResource PrimaryTextBrush}"
                            Style="{DynamicResource DP_IconStyle}" />
@@ -671,6 +674,9 @@
                         Value="FilterOutline" />
                 <Setter Property="Opacity"
                         Value="0.8" />
+                <Setter TargetName="Icon"
+                        Property="Margin"
+                        Value="0" />
             </Trigger>
             <Trigger Property="control:FilterState.IsFiltered"
                      Value="False">
@@ -802,7 +808,7 @@
                                                             <ColumnDefinition Width="*" />
                                                         </Grid.ColumnDefinitions>
                                                         <Path Grid.Column="0"
-                                                              Width="16"
+                                                              Width="14"
                                                               Margin="0,0,10,0"
                                                               HorizontalAlignment="Center"
                                                               Data="{DynamicResource FilterDelete}"
@@ -938,6 +944,8 @@
                                                 Value="Left" />
                                         <Setter Property="VerticalContentAlignment"
                                                 Value="Center" />
+                                        <Setter Property="Foreground"
+                                                Value="{DynamicResource PrimaryTextBrush}" />
                                     </Style>
                                 </ListBox.ItemContainerStyle>
                                 <ListBox.ItemTemplate>
@@ -949,7 +957,8 @@
                                                   CommandParameter="{Binding}"
                                                   FontWeight="Normal"
                                                   IsChecked="{Binding IsChecked}"
-                                                  IsThreeState="False">
+                                                  IsThreeState="False"
+                                                  Foreground="{DynamicResource PrimaryTextBrush}">
                                             <CheckBox.Content>
                                                 <TextBlock>
                                                     <TextBlock.Text>
@@ -1007,6 +1016,7 @@
                                                       VerticalAlignment="Center"
                                                       Focusable="False"
                                                       Content="{Binding Label}"
+                                                      Foreground="{DynamicResource PrimaryTextBrush}"
                                                       IsChecked="{Binding IsChecked, UpdateSourceTrigger=PropertyChanged}" />
                                         </StackPanel>
                                         <DataTemplate.Triggers>
@@ -1032,6 +1042,8 @@
                                                 Value="Stretch" />
                                         <Setter Property="Visibility"
                                                 Value="Visible" />
+                                        <Setter Property="Foreground"
+                                                Value="{DynamicResource PrimaryTextBrush}" />
                                     </Style>
                                 </TreeView.ItemContainerStyle>
                                 <TreeView.Style>
@@ -1128,6 +1140,7 @@
             </Popup>
         </Grid>
     </DataTemplate>
+    
     <!--dpu custom style-->
     <Style x:Key="DP_DataGridRowBaseStyle"
            TargetType="DataGridRow"
@@ -1172,6 +1185,7 @@
             </Trigger>
         </Style.Triggers>
     </Style>
+    
     <!--FilterGrid scrollbar styles-->
     <ControlTemplate x:Key="VerticalScrollBarTemplate"
                      TargetType="{x:Type ScrollBar}">
@@ -1180,21 +1194,6 @@
                   Width="15"
                   Background="{DynamicResource SecondaryRegionBrush}"
                   Margin="0 0 0 3">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-                <RepeatButton x:Name="UpButton"
-                              Command="ScrollBar.LineUpCommand"
-                              CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
-                              Margin="-7 0 0 3"
-                              Foreground="{DynamicResource SecondaryTextBrush}"
-                              Style="{DynamicResource DP_RepeatIconButton}">
-                    <icon:PackIcon Kind="MenuUp"
-                                   Style="{DynamicResource DP_IconStyle}"
-                                   Width="15" />
-                </RepeatButton>
                 <Track Grid.Row="1"
                        Name="PART_Track"
                        IsDirectionReversed="True">
@@ -1203,17 +1202,6 @@
                                Width="10" />
                     </Track.Thumb>
                 </Track>
-                <RepeatButton x:Name="DownButton"
-                              Grid.Row="2"
-                              Command="ScrollBar.LineDownCommand"
-                              CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
-                              Margin="-7 0 0 3"
-                              Foreground="{DynamicResource SecondaryTextBrush}"
-                              Style="{DynamicResource DP_RepeatIconButton}">
-                    <icon:PackIcon Kind="MenuDown"
-                                   Style="{DynamicResource DP_IconStyle}"
-                                   Width="15" />
-                </RepeatButton>
             </Grid>
         </Grid>
         <ControlTemplate.Triggers>
@@ -1222,12 +1210,6 @@
                 <Setter TargetName="ScrollBarGrid"
                         Property="Width"
                         Value="3" />
-                <Setter TargetName="UpButton"
-                        Property="Visibility"
-                        Value="Hidden" />
-                <Setter TargetName="DownButton"
-                        Property="Visibility"
-                        Value="Hidden" />
                 <Setter TargetName="PART_Track"
                         Property="HorizontalAlignment"
                         Value="Left" />
@@ -1293,7 +1275,6 @@
                 <ControlTemplate TargetType="{x:Type Thumb}">
                     <Border Background="{DynamicResource BorderBrush}"
                             Width="10"
-                            CornerRadius="2"
                             HorizontalAlignment="Center" />
                 </ControlTemplate>
             </Setter.Value>
@@ -1312,20 +1293,8 @@
             </Setter.Value>
         </Setter>
     </Style>
-    <Style x:Key="DP_RepeatIconButton"
-           TargetType="RepeatButton">
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="RepeatButton">
-                    <Grid>
-                        <ContentPresenter HorizontalAlignment="Center"
-                                          VerticalAlignment="Center"
-                                          Content="{TemplateBinding Content}" />
-                    </Grid>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
+
+    
     <Style x:Key="DP_GroupByHeaderStyle"
            TargetType="{x:Type GroupItem}">
         <Setter Property="Template">

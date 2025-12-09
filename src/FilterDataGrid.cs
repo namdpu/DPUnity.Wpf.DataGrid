@@ -65,12 +65,14 @@ namespace DPUnity.Wpf.DpDataGrid
             CommandBindings.Add(new CommandBinding(RemoveAllFilters, RemoveAllFilterCommand, CanRemoveAllFilter));
             CommandBindings.Add(new CommandBinding(RemoveFilter, RemoveFilterCommand, CanRemoveFilter));
             CommandBindings.Add(new CommandBinding(ShowFilter, ShowFilterCommand, CanShowFilter));
-            _ = CommandBindings.Add(new CommandBinding(ShowFindReplace, ShowFindReplaceCommand));
+            _ = CommandBindings.Add(new CommandBinding(ShowFindReplace, ShowFindReplaceCommand, CanShowFindReplace));
 
             // Thêm KeyBinding cho Ctrl + H
             InputBindings.Add(new KeyBinding(ShowFindReplace, new KeyGesture(Key.H, ModifierKeys.Control)));
 
             Loaded += (s, e) => OnLoadFilterDataGrid(this, new DependencyPropertyChangedEventArgs());
+            // Intercept Ctrl+A to optimize Select All on large datasets
+            PreviewKeyDown += OnFilterDataGridPreviewKeyDown;
 
         }
 
@@ -96,6 +98,41 @@ namespace DPUnity.Wpf.DpDataGrid
         #endregion Command
 
         #region Public DependencyProperty
+        /// <summary>
+        /// Threshold of item count after which Ctrl+A uses fast batched selection instead of selecting all at once.
+        /// </summary>
+        public static readonly DependencyProperty FastSelectAllThresholdProperty =
+            DependencyProperty.Register("FastSelectAllThreshold",
+                typeof(int),
+                typeof(FilterDataGrid),
+                new PropertyMetadata(5000));
+
+        /// <summary>
+        /// Batch size for fast Ctrl+A selection. Larger batches reduce overhead but may make UI less responsive.
+        /// </summary>
+        public static readonly DependencyProperty FastSelectAllBatchSizeProperty =
+            DependencyProperty.Register("FastSelectAllBatchSize",
+                typeof(int),
+                typeof(FilterDataGrid),
+                new PropertyMetadata(1000));
+
+        /// <summary>
+        /// Indicates if all filtered items are virtually selected (without setting IsSelected on individual items)
+        /// </summary>
+        public static readonly DependencyProperty IsAllSelectedProperty =
+            DependencyProperty.Register("IsAllSelected",
+                typeof(bool),
+                typeof(FilterDataGrid),
+                new PropertyMetadata(false, OnIsAllSelectedChanged));
+
+        /// <summary>
+        /// Threshold above which to use virtual selection instead of actual IsSelected property (default: 3000)
+        /// </summary>
+        public static readonly DependencyProperty VirtualSelectThresholdProperty =
+            DependencyProperty.Register("VirtualSelectThreshold",
+                typeof(int),
+                typeof(FilterDataGrid),
+                new PropertyMetadata(3000));
 
         /// <summary>
         ///     Excluded Fields (only AutoGeneratingColumn)
@@ -187,6 +224,15 @@ namespace DPUnity.Wpf.DpDataGrid
                 typeof(FilterDataGrid),
                 new PropertyMetadata(string.Empty));
 
+        /// <summary>
+        ///     Enable or disable Find and Replace feature
+        /// </summary>
+        public static readonly DependencyProperty EnableReplaceProperty =
+            DependencyProperty.Register("EnableReplace",
+                typeof(bool),
+                typeof(FilterDataGrid),
+                new PropertyMetadata(false));
+
         #endregion Public DependencyProperty
 
         #region Public Event
@@ -237,7 +283,7 @@ namespace DPUnity.Wpf.DpDataGrid
 
         private bool startsWith;
 
-        private readonly Dictionary<string, Predicate<object>> criteria = new();
+        private readonly Dictionary<string, Predicate<object>> criteria = [];
 
         #endregion Private Fields
 
@@ -352,7 +398,7 @@ namespace DPUnity.Wpf.DpDataGrid
         /// </summary>
         public List<FilterItemDate> TreeViewItems
         {
-            get => treeView ?? new List<FilterItemDate>();
+            get => treeView ?? [];
             set
             {
                 treeView = value;
@@ -365,7 +411,7 @@ namespace DPUnity.Wpf.DpDataGrid
         /// </summary>
         public List<FilterItem> ListBoxItems
         {
-            get => listBoxItems ?? new List<FilterItem>();
+            get => listBoxItems ?? [];
             set
             {
                 listBoxItems = value;
@@ -404,27 +450,117 @@ namespace DPUnity.Wpf.DpDataGrid
             set => SetValue(ShowSelectAllButtonProperty, value);
         }
 
+        /// <summary>
+        ///     Enable or disable Find and Replace feature
+        /// </summary>
+        public bool EnableReplace
+        {
+            get => (bool)GetValue(EnableReplaceProperty);
+            set => SetValue(EnableReplaceProperty, value);
+        }
+
+        /// <summary>
+        /// Threshold of item count after which Ctrl+A uses fast batched selection instead of selecting all at once.
+        /// Default 5000.
+        /// </summary>
+        public int FastSelectAllThreshold
+        {
+            get => (int)GetValue(FastSelectAllThresholdProperty);
+            set => SetValue(FastSelectAllThresholdProperty, value);
+        }
+
+        /// <summary>
+        /// Batch size for fast Ctrl+A selection. Default 1000.
+        /// </summary>
+        public int FastSelectAllBatchSize
+        {
+            get => (int)GetValue(FastSelectAllBatchSizeProperty);
+            set => SetValue(FastSelectAllBatchSizeProperty, value);
+        }
+
+        /// <summary>
+        /// Indicates if all filtered items are virtually selected
+        /// </summary>
+        public bool IsAllSelected
+        {
+            get => (bool)GetValue(IsAllSelectedProperty);
+            set => SetValue(IsAllSelectedProperty, value);
+        }
+
+        /// <summary>
+        /// Threshold above which to use virtual selection instead of actual IsSelected property. Default 3000.
+        /// </summary>
+        public int VirtualSelectThreshold
+        {
+            get => (int)GetValue(VirtualSelectThresholdProperty);
+            set => SetValue(VirtualSelectThresholdProperty, value);
+        }
+
+        /// <summary>
+        /// Indicates if currently in virtual selection mode
+        /// </summary>
+        public bool IsInVirtualSelectionMode { get; private set; } = false;
+
+        /// <summary>
+        /// Indicates if sorting is currently in progress
+        /// </summary>
+        public bool IsSorting
+        {
+            get => _isSorting;
+            private set
+            {
+                if (_isSorting != value)
+                {
+                    _isSorting = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets the count of effectively selected items
+        /// </summary>
+        public int EffectiveSelectedItemsCount
+        {
+            get
+            {
+                if (IsInVirtualSelectionMode)
+                {
+                    var totalItems = CollectionViewSource?.Cast<object>().Count() ?? Items.Count;
+                    return totalItems - _virtualSelectionExceptions.Count;
+                }
+                else
+                {
+                    return SelectedItems.Count;
+                }
+            }
+        }
+
         #endregion Public Properties
 
         #region Private Properties
 
         private FilterCommon CurrentFilter { get; set; }
         private ICollectionView CollectionViewSource { get; set; }
+
+        // Virtual selection support
+        private HashSet<object> _virtualSelectionExceptions = [];
+        private bool _isSorting = false;
         private ICollectionView ItemCollectionView { get; set; }
-        private List<FilterCommon> GlobalFilterList { get; } = new();
+        private List<FilterCommon> GlobalFilterList { get; } = [];
 
         /// <summary>
         /// Popup filtered items (ListBox/TreeView)
         /// </summary>
         private IEnumerable<FilterItem> PopupViewItems =>
-            ItemCollectionView?.OfType<FilterItem>().Where(c => c.Level != 0) ?? new List<FilterItem>();
+            ItemCollectionView?.OfType<FilterItem>().Where(c => c.Level != 0) ?? [];
 
         /// <summary>
         /// Popup source collection (ListBox/TreeView)
         /// </summary>
         private IEnumerable<FilterItem> SourcePopupViewItems =>
             ItemCollectionView?.SourceCollection.OfType<FilterItem>().Where(c => c.Level != 0) ??
-            new List<FilterItem>();
+            [];
 
         #endregion Private Properties
 
@@ -454,8 +590,8 @@ namespace DPUnity.Wpf.DpDataGrid
                 // fill excluded Fields list with values
                 if (AutoGenerateColumns)
                 {
-                    excludedFields = new List<string>(ExcludeFields.Split(',').Select(p => p.Trim()));
-                    excludedColumns = new List<string>(ExcludeColumns.Split(',').Select(p => p.Trim()));
+                    excludedFields = [.. ExcludeFields.Split(',').Select(p => p.Trim())];
+                    excludedColumns = [.. ExcludeColumns.Split(',').Select(p => p.Trim())];
                 }
                 // generating custom columns
                 else if (collectionType != null) GeneratingCustomsColumn();
@@ -675,11 +811,196 @@ namespace DPUnity.Wpf.DpDataGrid
         /// <param name="eventArgs"></param>
         protected override void OnSorting(DataGridSortingEventArgs eventArgs)
         {
-            if (currentlyFiltering || (popup?.IsOpen ?? false)) return;
+            // Prevent multiple concurrent sorts
+            if (IsSorting || currentlyFiltering || (popup?.IsOpen ?? false))
+            {
+                eventArgs.Handled = true;
+                return;
+            }
 
+            IsSorting = true;
             Mouse.OverrideCursor = Cursors.Wait;
-            base.OnSorting(eventArgs);
-            Sorted?.Invoke(this, EventArgs.Empty);
+
+            try
+            {
+                // Get the column being sorted
+                var column = eventArgs.Column;
+
+                // Check if we can apply custom sorting
+                if (CollectionViewSource != null && column is DataGridBoundColumn boundColumn)
+                {
+                    eventArgs.Handled = true;
+
+                    // Get the property path for sorting
+                    var sortPropertyName = column.SortMemberPath;
+                    if (string.IsNullOrEmpty(sortPropertyName) && boundColumn.Binding is Binding binding)
+                    {
+                        sortPropertyName = binding.Path.Path;
+                    }
+
+                    if (!string.IsNullOrEmpty(sortPropertyName))
+                    {
+                        // Determine sort direction
+                        var direction = column.SortDirection != ListSortDirection.Ascending
+                            ? ListSortDirection.Ascending
+                            : ListSortDirection.Descending;
+
+                        // Apply custom sorting with natural number ordering
+                        ApplyNaturalSort(sortPropertyName, direction);
+
+                        // Update column sort direction
+                        column.SortDirection = direction;
+
+                        // Remove sort direction from other columns
+                        foreach (var col in Columns)
+                        {
+                            if (col != column)
+                            {
+                                col.SortDirection = null;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    // Use default sorting for columns that don't support custom sorting
+                    base.OnSorting(eventArgs);
+                }
+
+                Sorted?.Invoke(this, EventArgs.Empty);
+            }
+            finally
+            {
+                // Use async reset to ensure UI responsiveness
+                _ = ResetSortingStateAsync();
+            }
+        }
+
+        /// <summary>
+        ///     Apply natural sort with numeric extraction
+        /// </summary>
+        /// <param name="propertyName">Property name to sort by</param>
+        /// <param name="direction">Sort direction</param>
+        private void ApplyNaturalSort(string propertyName, ListSortDirection direction)
+        {
+            try
+            {
+                if (CollectionViewSource == null) return;
+
+                // Clear existing sort descriptions
+                CollectionViewSource.SortDescriptions.Clear();
+
+                // Create a custom comparer for natural sorting
+                var comparer = new NaturalSortComparer(propertyName, direction);
+
+                // Use LiveShaping if available for better performance
+                if (CollectionViewSource is ICollectionViewLiveShaping liveShaping && liveShaping.CanChangeLiveSorting)
+                {
+                    liveShaping.LiveSortingProperties.Clear();
+                    liveShaping.LiveSortingProperties.Add(propertyName);
+                    liveShaping.IsLiveSorting = true;
+                }
+
+                // Apply custom sorting
+                if (CollectionViewSource is ListCollectionView listView)
+                {
+                    listView.CustomSort = comparer;
+                }
+                else
+                {
+                    // Fallback to standard sort description
+                    CollectionViewSource.SortDescriptions.Add(new SortDescription(propertyName, direction));
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"ApplyNaturalSort error: {ex.Message}");
+                // Fallback to simple sort
+                CollectionViewSource?.SortDescriptions.Add(new SortDescription(propertyName, direction));
+            }
+        }
+
+        /// <summary>
+        ///     Natural sort comparer that handles numeric values in strings
+        /// </summary>
+        private class NaturalSortComparer : IComparer
+        {
+            private readonly string _propertyName;
+            private readonly ListSortDirection _direction;
+
+            public NaturalSortComparer(string propertyName, ListSortDirection direction)
+            {
+                _propertyName = propertyName;
+                _direction = direction;
+            }
+
+            public int Compare(object? x, object? y)
+            {
+                try
+                {
+                    if (x == null && y == null) return 0;
+                    if (x == null) return _direction == ListSortDirection.Ascending ? -1 : 1;
+                    if (y == null) return _direction == ListSortDirection.Ascending ? 1 : -1;
+
+                    // Get property values
+                    var xValue = x.GetPropertyValue(_propertyName);
+                    var yValue = y.GetPropertyValue(_propertyName);
+
+                    if (xValue == null && yValue == null) return 0;
+                    if (xValue == null) return _direction == ListSortDirection.Ascending ? -1 : 1;
+                    if (yValue == null) return _direction == ListSortDirection.Ascending ? 1 : -1;
+
+                    // Convert to strings for comparison
+                    var xString = xValue.ToString() ?? string.Empty;
+                    var yString = yValue.ToString() ?? string.Empty;
+
+                    // Try to extract numbers from the strings
+                    var xNumber = Helpers.ExtractNumberFromName(xString);
+                    var yNumber = Helpers.ExtractNumberFromName(yString);
+
+                    // If both have numbers, compare numerically first
+                    if (xNumber != 0 || yNumber != 0)
+                    {
+                        var numericComparison = xNumber.CompareTo(yNumber);
+                        if (numericComparison != 0)
+                        {
+                            return _direction == ListSortDirection.Ascending ? numericComparison : -numericComparison;
+                        }
+                    }
+
+                    // If numbers are equal or both zero, compare strings
+                    var stringComparison = string.Compare(xString, yString, StringComparison.CurrentCultureIgnoreCase);
+                    return _direction == ListSortDirection.Ascending ? stringComparison : -stringComparison;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"NaturalSortComparer.Compare error: {ex.Message}");
+                    return 0;
+                }
+            }
+        }
+
+        private async Task ResetSortingStateAsync()
+        {
+            try
+            {
+                // Small delay to ensure sorting operation completes
+                await Task.Delay(100);
+
+                IsSorting = false;
+                await ResetCursorAsync();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"ResetSortingStateAsync error: {ex.Message}");
+                IsSorting = false;
+            }
+        }
+
+        private async Task ResetCursorAsync()
+        {
+            await Dispatcher.BeginInvoke(() => { Mouse.OverrideCursor = null; },
+                DispatcherPriority.ContextIdle);
         }
 
         /// <summary>
@@ -706,6 +1027,39 @@ namespace DPUnity.Wpf.DpDataGrid
                 // Set empty content but maintain structure
                 e.Row.Header = new TextBlock { Text = string.Empty };
             }
+
+            // Update row selection visual for virtual selection mode
+            if (IsInVirtualSelectionMode && e.Row.DataContext != null)
+            {
+                bool shouldBeSelected = !_virtualSelectionExceptions.Contains(e.Row.DataContext);
+                // Just set the visual state, don't manipulate SelectedItems
+                e.Row.IsSelected = shouldBeSelected;
+            }
+
+            base.OnLoadingRow(e);
+        }
+
+        protected override void OnSelectionChanged(SelectionChangedEventArgs e)
+        {
+            // If in virtual selection mode and user is manually changing selection, exit virtual mode
+            if (IsInVirtualSelectionMode && !_fastSelecting)
+            {
+                Debug.WriteLine($"Exiting virtual selection mode due to manual selection change. Removed: {e.RemovedItems.Count}, Added: {e.AddedItems.Count}");
+
+                // Exit virtual mode and use normal DataGrid selection
+                IsInVirtualSelectionMode = false;
+                IsAllSelected = false;
+                _virtualSelectionExceptions.Clear();
+
+                // Force sync with bound collection
+                Dispatcher.BeginInvoke(new Action(async () =>
+                {
+                    await Task.Delay(10); // Let selection settle
+                    await DPUnity.Wpf.DpDataGrid.Behaviors.SelectedItemsBehavior.SyncSelectedItemsAsync(this, 0);
+                }), DispatcherPriority.Background);
+            }
+
+            base.OnSelectionChanged(e);
         }
 
         #endregion Protected Methods
@@ -768,6 +1122,75 @@ namespace DPUnity.Wpf.DpDataGrid
         #endregion Public Methods
 
         #region Private Methods
+
+        private bool _fastSelecting;
+
+        private async void OnFilterDataGridPreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            try
+            {
+                if (_fastSelecting)
+                {
+                    return;
+                }
+
+                // Optimize Ctrl+A (Select All)
+                if (e.Key == Key.A && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+                {
+                    // Only optimize for multi-select and large datasets
+                    if (SelectionMode != DataGridSelectionMode.Single && Items != null && Items.Count >= FastSelectAllThreshold)
+                    {
+                        e.Handled = true;
+                        _fastSelecting = true;
+
+                        Mouse.OverrideCursor = Cursors.Wait;
+                        try
+                        {
+                            // Use virtual selection for very large datasets
+                            if (Items.Count >= VirtualSelectThreshold)
+                            {
+                                await VirtualSelectAllAsync();
+                            }
+                            else
+                            {
+                                // Suppress mirrored selection sync while DataGrid processes selection internally
+                                DPUnity.Wpf.DpDataGrid.Behaviors.SelectedItemsBehavior.SetSuppressSelectionSync(this, true);
+
+                                // Let DataGrid perform the selection
+                                await Dispatcher.BeginInvoke(new Action(() => SelectAll()), DispatcherPriority.Normal);
+
+                                // Yield to allow internal SelectedItems to settle
+                                await Dispatcher.Yield(DispatcherPriority.Background);
+
+                                // Bulk sync to bound SelectedItems (if any) in batches to keep UI responsive
+                                int batch = Math.Max(0, FastSelectAllBatchSize);
+                                await DPUnity.Wpf.DpDataGrid.Behaviors.SelectedItemsBehavior.SyncSelectedItemsAsync(this, batch);
+                            }
+                        }
+                        finally
+                        {
+                            if (Items.Count < VirtualSelectThreshold)
+                            {
+                                DPUnity.Wpf.DpDataGrid.Behaviors.SelectedItemsBehavior.SetSuppressSelectionSync(this, false);
+                            }
+                            _fastSelecting = false;
+                            ResetCursor();
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Fast SelectAll error: {ex.Message}");
+            }
+            finally
+            {
+                if (!e.Handled)
+                {
+                    base.OnPreviewKeyDown(e);
+                }
+            }
+        }
 
         private void AdjustColumnWidth(DataGridColumn column)
         {
@@ -904,7 +1327,7 @@ namespace DPUnity.Wpf.DpDataGrid
                         preset.PreviouslyFilteredItems = [.. preset.PreviouslyFilteredItems.Select(o => ConvertToType(o, preset.FieldType))];
 
                         // Get the items that are always present in the source collection
-                        preset.FilteredItems = new List<object>(sourceObjectList.Where(c => preset.PreviouslyFilteredItems.Contains(c)));
+                        preset.FilteredItems = [.. sourceObjectList.Where(c => preset.PreviouslyFilteredItems.Contains(c))];
 
                         // if no items are filtered, continue to the next column
                         if (preset.FilteredItems.Count == 0)
@@ -1044,8 +1467,7 @@ namespace DPUnity.Wpf.DpDataGrid
                         Label = key.ToString(Translate.Culture),
                         Initialize = true,
                         FieldType = fieldType,
-                        Children = new List<FilterItemDate>(
-                            group.GroupBy(
+                        Children = [.. group.GroupBy(
                                 x => ((DateTime)x.Content).Month,
                                 (monthKey, monthGroup) => new FilterItemDate
                                 {
@@ -1054,20 +1476,17 @@ namespace DPUnity.Wpf.DpDataGrid
                                     Label = new DateTime(key, monthKey, 1).ToString("MMMM", Translate.Culture),
                                     Initialize = true,
                                     FieldType = fieldType,
-                                    Children = new List<FilterItemDate>(
-                                        monthGroup.Select(x => new FilterItemDate
-                                        {
-                                            Level = 3,
-                                            Content = ((DateTime)x.Content).Day,
-                                            Label = ((DateTime)x.Content).ToString("dd", Translate.Culture),
-                                            Initialize = true,
-                                            FieldType = fieldType,
-                                            Item = x
-                                        })
-                                    )
+                                    Children = [.. monthGroup.Select(x => new FilterItemDate
+                                    {
+                                        Level = 3,
+                                        Content = ((DateTime)x.Content).Day,
+                                        Label = ((DateTime)x.Content).ToString("dd", Translate.Culture),
+                                        Initialize = true,
+                                        FieldType = fieldType,
+                                        Item = x
+                                    })]
                                 }
-                            )
-                        )
+                            )]
                     }
                 ).ToList();
 
@@ -1413,6 +1832,184 @@ namespace DPUnity.Wpf.DpDataGrid
             await Dispatcher.BeginInvoke(() => { Mouse.OverrideCursor = null; },
                 DispatcherPriority.ContextIdle);
         }
+
+        #region Virtual Selection
+
+        private static void OnIsAllSelectedChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            if (d is FilterDataGrid grid)
+            {
+                grid.OnIsAllSelectedChanged((bool)e.NewValue);
+            }
+        }
+
+        private void OnIsAllSelectedChanged(bool isAllSelected)
+        {
+            if (isAllSelected)
+            {
+                _virtualSelectionExceptions.Clear();
+                IsInVirtualSelectionMode = true;
+            }
+            else
+            {
+                _virtualSelectionExceptions.Clear();
+                IsInVirtualSelectionMode = false;
+            }
+
+            // Refresh visual state of rows
+            InvalidateArrange();
+        }
+
+        private async Task VirtualSelectAllAsync()
+        {
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            try
+            {
+                Debug.WriteLine($"[VirtualSelectAll] Starting - Items.Count: {Items.Count}, Threshold: {VirtualSelectThreshold}");
+
+                // Enable virtual select all mode instantly
+                IsAllSelected = true;
+                IsInVirtualSelectionMode = true;
+                _virtualSelectionExceptions.Clear();
+
+                Debug.WriteLine($"[VirtualSelectAll] Virtual mode enabled in {stopwatch.ElapsedMilliseconds}ms");
+
+                // Don't clear SelectedItems - instead populate it with visible items for visual feedback
+                // Use a small batch to make selection appear fast but not freeze UI
+                await PopulateVisibleRowSelection();
+
+                Debug.WriteLine($"[VirtualSelectAll] Visible rows populated in {stopwatch.ElapsedMilliseconds}ms");
+
+                // Notify UI that selection changed
+                await Dispatcher.BeginInvoke(() =>
+                {
+                    OnPropertyChanged(nameof(SelectedItems));
+                    OnPropertyChanged(nameof(EffectiveSelectedItemsCount));
+                }, DispatcherPriority.Background);
+
+                Debug.WriteLine($"[VirtualSelectAll] Completed in {stopwatch.ElapsedMilliseconds}ms - EffectiveSelectedItemsCount: {EffectiveSelectedItemsCount}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"VirtualSelectAllAsync error: {ex.Message}");
+            }
+            finally
+            {
+                stopwatch.Stop();
+            }
+        }
+
+        private async Task PopulateVisibleRowSelection()
+        {
+            try
+            {
+                // Select only currently visible rows for immediate visual feedback
+                var containers = new List<DataGridRow>();
+                for (int i = 0; i < Items.Count && containers.Count < 50; i++)
+                {
+                    if (ItemContainerGenerator.ContainerFromIndex(i) is DataGridRow container)
+                    {
+                        containers.Add(container);
+                    }
+                }
+
+                // Select these rows in small batches
+                for (int i = 0; i < containers.Count; i += 10)
+                {
+                    for (int j = i; j < Math.Min(i + 10, containers.Count); j++)
+                    {
+                        var row = containers[j];
+                        if (row.DataContext != null && !SelectedItems.Contains(row.DataContext))
+                        {
+                            SelectedItems.Add(row.DataContext);
+                        }
+                    }
+
+                    // Yield every 10 items
+                    if (i + 10 < containers.Count)
+                    {
+                        await Task.Yield();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"PopulateVisibleRowSelection error: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Gets the effective selected items, considering virtual selection
+        /// </summary>
+        public IEnumerable GetEffectiveSelectedItems()
+        {
+            if (IsInVirtualSelectionMode)
+            {
+                // Return all filtered items except exceptions
+                var allItems = new List<object>();
+
+                if (CollectionViewSource != null)
+                {
+                    foreach (var item in CollectionViewSource)
+                    {
+                        if (!_virtualSelectionExceptions.Contains(item))
+                        {
+                            allItems.Add(item);
+                        }
+                    }
+                }
+                else
+                {
+                    foreach (var item in Items)
+                    {
+                        if (!_virtualSelectionExceptions.Contains(item))
+                        {
+                            allItems.Add(item);
+                        }
+                    }
+                }
+
+                return allItems;
+            }
+            else
+            {
+                return SelectedItems;
+            }
+        }
+
+        /// <summary>
+        /// Checks if an item is effectively selected, considering virtual selection
+        /// </summary>
+        public bool IsItemEffectivelySelected(object item)
+        {
+            if (IsInVirtualSelectionMode)
+            {
+                return !_virtualSelectionExceptions.Contains(item);
+            }
+            else
+            {
+                return SelectedItems.Contains(item);
+            }
+        }
+
+        /// <summary>
+        /// Clears virtual selection and returns to normal selection mode
+        /// </summary>
+        public void ClearVirtualSelection()
+        {
+            if (IsInVirtualSelectionMode)
+            {
+                IsInVirtualSelectionMode = false;
+                IsAllSelected = false;
+                _virtualSelectionExceptions.Clear();
+                SelectedItems.Clear();
+
+                OnPropertyChanged(nameof(EffectiveSelectedItemsCount));
+                Debug.WriteLine("[VirtualSelectAll] Cleared virtual selection");
+            }
+        }
+
+        #endregion Virtual Selection
 
         /// <summary>
         ///     Can Apply filter (popup Ok button)
@@ -1972,20 +2569,37 @@ namespace DPUnity.Wpf.DpDataGrid
 
                     string GetLabel(object o, Type type)
                     {
-                        // retrieve the label of the list previously reconstituted from "ItemsSource" of the combobox
-                        if (comboxColumn?.IsSingle == true)
-                        {
-                            return comboxColumn.ComboBoxItemsSource
-                                ?.FirstOrDefault(x => x.SelectedValue == o.ToString())?.DisplayMember;
-                        }
-
                         if (comboxColumn != null)
                         {
+                            // Try to get ItemsSource directly (handles both binding and static resources like proxy)
+                            var items = comboxColumn.ItemsSource;
+
+                            if (items != null &&
+                                string.IsNullOrEmpty(comboxColumn.DisplayMemberPath) &&
+                                string.IsNullOrEmpty(comboxColumn.SelectedValuePath))
+                            {
+                                // Simple collection where items are the values themselves
+                                foreach (var item in items)
+                                {
+                                    if (item != null && item.Equals(o))
+                                    {
+                                        return item.ToString();
+                                    }
+                                }
+                            }
+
+                            // retrieve the label of the list previously reconstituted from "ItemsSource" of the combobox
+                            if (comboxColumn.IsSingle == true)
+                            {
+                                return comboxColumn.ComboBoxItemsSource
+                                    ?.FirstOrDefault(x => x.SelectedValue == o.ToString())?.DisplayMember;
+                            }
+
                             var itemsSourceBinding = BindingOperations.GetBinding(comboxColumn, System.Windows.Controls.DataGridComboBoxColumn.ItemsSourceProperty);
                             bool isUsingEnumConverter = itemsSourceBinding?.Converter is EnumToKeyValueListConverter;
+
                             if (isUsingEnumConverter) // If using EnumToKeyValueListConverter => use description as field name
                             {
-                                var items = comboxColumn.ItemsSource;
                                 if (items != null)
                                 {
                                     // Try to find a matching key-value pair where the key matches our value
@@ -2006,6 +2620,42 @@ namespace DPUnity.Wpf.DpDataGrid
                                                     return valueProperty.GetValue(item)?.ToString();
                                                 }
                                             }
+                                        }
+                                    }
+                                }
+                            }
+                            // Handle ItemsSource collections with DisplayMemberPath (including proxy bindings)
+                            else if (items != null && !string.IsNullOrEmpty(comboxColumn.DisplayMemberPath))
+                            {
+                                // Try to find display value from ItemsSource using DisplayMemberPath
+                                foreach (var item in items)
+                                {
+                                    // Get the value that should match (SelectedValuePath or the item itself)
+                                    var valueToMatch = o;
+                                    if (!string.IsNullOrEmpty(comboxColumn.SelectedValuePath))
+                                    {
+                                        var valueProperty = item.GetType().GetProperty(comboxColumn.SelectedValuePath);
+                                        if (valueProperty != null)
+                                        {
+                                            var itemValue = valueProperty.GetValue(item);
+                                            if (itemValue != null && itemValue.Equals(valueToMatch))
+                                            {
+                                                // Found matching item, get display value
+                                                var displayProperty = item.GetType().GetProperty(comboxColumn.DisplayMemberPath);
+                                                if (displayProperty != null)
+                                                {
+                                                    return displayProperty.GetValue(item)?.ToString();
+                                                }
+                                            }
+                                        }
+                                    }
+                                    else if (item.Equals(valueToMatch))
+                                    {
+                                        // No SelectedValuePath, item itself is the value
+                                        var displayProperty = item.GetType().GetProperty(comboxColumn.DisplayMemberPath);
+                                        if (displayProperty != null)
+                                        {
+                                            return displayProperty.GetValue(item)?.ToString();
                                         }
                                     }
                                 }
@@ -2132,15 +2782,20 @@ namespace DPUnity.Wpf.DpDataGrid
                         blankIsChanged.IsChecked = false;
                         blankIsChanged.IsChanged = !previousFiltered.Any(c => c != null && c.Equals(string.Empty));
 
-                        // result of the research
-                        var searchResult = PopupViewItems.Where(c => c.IsChecked).ToList();
+                        // result of the research - only items that appear in search
+                        var searchResult = PopupViewItems.ToList();
 
-                        // unchecked : all items except searchResult
-                        var uncheckedItems = SourcePopupViewItems.Except(searchResult).ToList();
-                        uncheckedItems.AddRange(searchResult.Where(c => c.IsChecked == false));
+                        // Only update items that are actually visible in search results
+                        // Items checked in search results should be removed from previousFiltered (shown)
+                        var checkedInSearch = searchResult.Where(c => c.IsChecked).ToList();
+                        previousFiltered.ExceptWith(checkedInSearch.Select(c => c.Content));
 
-                        previousFiltered.ExceptWith(searchResult.Select(c => c.Content));
-                        previousFiltered.UnionWith(uncheckedItems.Select(c => c.Content));
+                        // Items unchecked in search results should be added to previousFiltered (hidden)
+                        var uncheckedInSearch = searchResult.Where(c => !c.IsChecked).ToList();
+                        previousFiltered.UnionWith(uncheckedInSearch.Select(c => c.Content));
+
+                        // Do NOT modify the state of items that are not visible in search results
+                        // This preserves the original filter state of items not matching the search
                     }
                     else
                     {
@@ -2302,6 +2957,16 @@ namespace DPUnity.Wpf.DpDataGrid
         }
 
         /// <summary>
+        ///     Check if Find and Replace command can execute
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void CanShowFindReplace(object sender, CanExecuteRoutedEventArgs e)
+        {
+            e.CanExecute = EnableReplace && SelectedItems != null && SelectedItems.Count > 0;
+        }
+
+        /// <summary>
         ///     Show Find and Replace dialog when user presses Ctrl + H
         /// </summary>
         /// <param name="sender"></param>
@@ -2310,6 +2975,12 @@ namespace DPUnity.Wpf.DpDataGrid
         {
             try
             {
+                // Kiểm tra xem tính năng Replace có được bật không
+                if (!EnableReplace)
+                {
+                    return;
+                }
+
                 // Kiểm tra có ít nhất 1 dòng được chọn
                 if (SelectedItems == null || SelectedItems.Count == 0)
                 {
