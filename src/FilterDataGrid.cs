@@ -2784,8 +2784,17 @@ namespace DPUnity.Wpf.DpDataGrid
 
                         // result of the research - only items that appear in search
                         var searchResult = PopupViewItems.ToList();
+                        var searchResultContents = new HashSet<object>(searchResult.Select(c => c.Content));
 
-                        // Only update items that are actually visible in search results
+                        // Get all source items (including those not visible in search)
+                        var allSourceItems = SourcePopupViewItems.ToList();
+
+                        // Items NOT in search result should be added to previousFiltered (hidden)
+                        // This ensures that when user searches "1" and applies filter,
+                        // items not containing "1" will also be filtered out
+                        var itemsNotInSearch = allSourceItems.Where(c => !searchResultContents.Contains(c.Content)).ToList();
+                        previousFiltered.UnionWith(itemsNotInSearch.Select(c => c.Content));
+
                         // Items checked in search results should be removed from previousFiltered (shown)
                         var checkedInSearch = searchResult.Where(c => c.IsChecked).ToList();
                         previousFiltered.ExceptWith(checkedInSearch.Select(c => c.Content));
@@ -2793,9 +2802,6 @@ namespace DPUnity.Wpf.DpDataGrid
                         // Items unchecked in search results should be added to previousFiltered (hidden)
                         var uncheckedInSearch = searchResult.Where(c => !c.IsChecked).ToList();
                         previousFiltered.UnionWith(uncheckedInSearch.Select(c => c.Content));
-
-                        // Do NOT modify the state of items that are not visible in search results
-                        // This preserves the original filter state of items not matching the search
                     }
                     else
                     {
