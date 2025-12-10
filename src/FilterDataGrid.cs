@@ -9,8 +9,8 @@
 
 #endregion
 
-using DPUnity.Wpf.Controls.Controls.DialogService;
-using DPUnity.Wpf.Controls.Controls.InputForms;
+using DPUnity.Core.DependencyInjection;
+using DPUnity.Wpf.Common.Controls;
 using DPUnity.Wpf.DpDataGrid.Converters;
 using System.Collections;
 using System.Collections.Specialized;
@@ -33,6 +33,8 @@ namespace DPUnity.Wpf.DpDataGrid
     /// </summary>
     public class FilterDataGrid : System.Windows.Controls.DataGrid, INotifyPropertyChanged
     {
+        private readonly IDialogService _dialogService;
+        private readonly IInputService _inputService;
         #region Constructors
 
         /// <summary>
@@ -40,6 +42,9 @@ namespace DPUnity.Wpf.DpDataGrid
         /// </summary>
         public FilterDataGrid()
         {
+            _inputService = DIContainer.GetService<IInputService>(); 
+            _dialogService= DIContainer.GetService<IDialogService>();
+
             Debug.WriteLineIf(DebugMode, "FilterDataGrid.Constructor");
 
             DefaultStyleKey = typeof(FilterDataGrid);
@@ -73,7 +78,7 @@ namespace DPUnity.Wpf.DpDataGrid
             Loaded += (s, e) => OnLoadFilterDataGrid(this, new DependencyPropertyChangedEventArgs());
             // Intercept Ctrl+A to optimize Select All on large datasets
             PreviewKeyDown += OnFilterDataGridPreviewKeyDown;
-
+       
         }
 
         static FilterDataGrid()
@@ -2994,7 +2999,7 @@ namespace DPUnity.Wpf.DpDataGrid
                     return;
                 }
 
-                var replaceOutput = await DPInput.ShowDataGridReplaceInput(Name, replaceableColumns);
+                var replaceOutput = await _inputService.ShowDataGridReplaceInput(Name, replaceableColumns);
 
                 int itemChangedCount = 0;
                 bool hasChanges = false;
@@ -3075,12 +3080,12 @@ namespace DPUnity.Wpf.DpDataGrid
                             Debug.WriteLine($"Error refreshing UI after replace: {ex.Message}");
                         }
                     }), DispatcherPriority.Render);
-                    DPDialog.Info($"Đã thực hiện {itemChangedCount} thay đổi.");
+                   await _dialogService.ShowInfo($"Đã thực hiện {itemChangedCount} thay đổi.");
                 }
             }
             catch (Exception ex)
             {
-                DPDialog.Error(ex.Message);
+                await _dialogService.ShowError(ex.Message);
             }
         }
 
@@ -3110,6 +3115,7 @@ namespace DPUnity.Wpf.DpDataGrid
         public static readonly DependencyProperty ShowSelectionColumnProperty =
             DependencyProperty.Register(nameof(ShowSelectionColumn), typeof(bool), typeof(FilterDataGrid),
                 new PropertyMetadata(false, OnShowSelectionColumnChanged));
+
 
         public bool ShowSelectionColumn
         {
