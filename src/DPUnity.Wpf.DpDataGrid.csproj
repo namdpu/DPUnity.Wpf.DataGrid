@@ -15,9 +15,19 @@
 		<RepositoryUrl>https://github.com/namdpu/DPUnity.Wpf.DataGrid</RepositoryUrl>
 	</PropertyGroup>
 
-	<ItemGroup>
-		<PackageReference Include="DPUnity.Wpf.Controls" Version="1.0.29" />
-		<PackageReference Include="DPUnity.Wpf.UI" Version="1.0.30" />
-		<PackageReference Include="HandyControls" Version="3.6.0" />
+  <ItemGroup Condition="'$(Configuration)' == 'Debug'">
+	  <ProjectReference Include="..\..\DPUnity.Wpf.Controls\src\DPUnity.Wpf.Controls\DPUnity.Wpf.Controls.csproj" />
+	  <ProjectReference Include="..\..\DPUnity.Wpf.UI\DPUnity.Wpf.UI.csproj" />
+    <ProjectReference Include="..\..\..\BASE\DPUnity.Core\DPUnity.Core.csproj" />
 	</ItemGroup>
+
+  <ItemGroup Condition="'$(Configuration)' != 'Debug'">
+    <PackageReference Include="DPUnity.Core" Version="1.0.5" />
+    <PackageReference Include="DPUnity.Wpf.Controls" Version="1.0.30" />
+    <PackageReference Include="DPUnity.Wpf.UI" Version="1.0.32" />
+  </ItemGroup>
+
+  <ItemGroup>
+    
+  </ItemGroup>
 </Project>
