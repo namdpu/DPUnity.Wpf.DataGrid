@@ -6,7 +6,7 @@
 		<Nullable>enable</Nullable>
 		<UseWPF>true</UseWPF>
 		<ImplicitUsings>enable</ImplicitUsings>
-		<Version>1.0.20</Version>
+		<Version>1.1.0</Version>
 		<PackageId>DPUnity.Wpf.DpDataGrid</PackageId>
 		<Title>DPUnity WPF DataGrid</Title>
 		<Description>Enhanced DataGrid controls for WPF applications</Description>
@@ -18,13 +18,11 @@
   <ItemGroup Condition="'$(Configuration)' == 'Debug'">
 	  <ProjectReference Include="..\..\DPUnity.Wpf.Controls\src\DPUnity.Wpf.Controls\DPUnity.Wpf.Controls.csproj" />
 	  <ProjectReference Include="..\..\DPUnity.Wpf.UI\DPUnity.Wpf.UI.csproj" />
-    <ProjectReference Include="..\..\..\BASE\DPUnity.Core\DPUnity.Core.csproj" />
 	</ItemGroup>
 
   <ItemGroup Condition="'$(Configuration)' != 'Debug'">
-    <PackageReference Include="DPUnity.Core" Version="1.0.5" />
-    <PackageReference Include="DPUnity.Wpf.Controls" Version="1.0.30" />
-    <PackageReference Include="DPUnity.Wpf.UI" Version="1.0.32" />
+    <PackageReference Include="DPUnity.Wpf.Controls" Version="1.1.0" />
+    <PackageReference Include="DPUnity.Wpf.UI" Version="1.1.0" />
   </ItemGroup>
 
   <ItemGroup>

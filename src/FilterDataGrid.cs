@@ -3080,12 +3080,12 @@ namespace DPUnity.Wpf.DpDataGrid
                             Debug.WriteLine($"Error refreshing UI after replace: {ex.Message}");
                         }
                     }), DispatcherPriority.Render);
-                   await _dialogService.ShowInfo($"Đã thực hiện {itemChangedCount} thay đổi.");
+                    _dialogService.ShowInfo($"Đã thực hiện {itemChangedCount} thay đổi.");
                 }
             }
             catch (Exception ex)
             {
-                await _dialogService.ShowError(ex.Message);
+                 _dialogService.ShowError(ex.Message);
             }
         }
 
